@@ -32,6 +32,10 @@ setup(
         "odorant",
         "receptor",
         "door",
+        "flywire",
+        "connectomics",
+        "neural-network",
+        "machine-learning",
     ],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
@@ -41,10 +45,21 @@ setup(
         "pandas>=1.5.0",
         "numpy>=1.21.0",
         "pyarrow>=12.0.0",
+        "scipy>=1.9.0",
+        "scikit-learn>=1.1.0",
+        "networkx>=2.8",
+        "tqdm>=4.64.0",
     ],
     extras_require={
         "extract": ["pyreadr>=0.4.7"],
         "torch": ["torch>=2.0.0"],
+        "flywire": [
+            "plotly>=5.11.0",
+            "seaborn>=0.11.0",
+            "matplotlib>=3.5.0",
+        ],
+        "spatial": ["trimesh>=3.15.0"],
+        "h5": ["h5py>=3.7.0"],
         "docs": [
             "sphinx>=6.0.0",
             "sphinx-rtd-theme>=1.2.0",
@@ -58,6 +73,15 @@ setup(
             "pytest-cov>=4.0.0",
             "twine>=4.0.0",
             "build>=1.0.0",
+        ],
+        "all": [
+            "pyreadr>=0.4.7",
+            "torch>=2.0.0",
+            "plotly>=5.11.0",
+            "seaborn>=0.11.0",
+            "matplotlib>=3.5.0",
+            "trimesh>=3.15.0",
+            "h5py>=3.7.0",
         ],
     },
     classifiers=[
@@ -77,6 +101,9 @@ setup(
     entry_points={
         "console_scripts": [
             "door-extract=door_toolkit.cli:extract_main",
+            "door-flywire=door_toolkit.cli_flywire:flywire_main",
+            "door-pathways=door_toolkit.cli_pathways:pathways_main",
+            "door-neural=door_toolkit.cli_neural:neural_main",
         ],
     },
 )

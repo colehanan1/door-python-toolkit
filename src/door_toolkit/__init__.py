@@ -21,10 +21,29 @@ Basic Usage:
     >>> encoder = DoOREncoder("door_cache")
     >>> pn_activation = encoder.encode("acetic acid")
 
+Advanced Features:
+    >>> # FlyWire integration
+    >>> from door_toolkit.flywire import FlyWireMapper
+    >>> mapper = FlyWireMapper("community_labels.csv.gz")
+    >>> mapper.parse_labels()
+
+    >>> # Pathway analysis
+    >>> from door_toolkit.pathways import PathwayAnalyzer
+    >>> analyzer = PathwayAnalyzer("door_cache")
+    >>> pathway = analyzer.trace_or47b_feeding_pathway()
+
+    >>> # Neural network preprocessing
+    >>> from door_toolkit.neural import DoORNeuralPreprocessor
+    >>> preprocessor = DoORNeuralPreprocessor("door_cache")
+    >>> sparse_data = preprocessor.create_sparse_encoding(sparsity_level=0.05)
+
 Modules:
     extractor: Extract DoOR R data to Python formats
     encoder: Encode odorant names to neural activation patterns
     utils: Helper functions and data loaders
+    flywire: FlyWire community labels integration
+    pathways: Olfactory pathway analysis and experiment generation
+    neural: Neural network preprocessing and sparse encoding
 
 For more information, see: https://github.com/colehanan1/door-python-toolkit
 """

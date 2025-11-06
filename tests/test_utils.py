@@ -1,0 +1,81 @@
+"""Unit tests for DoOR utilities."""
+
+import pytest
+from pathlib import Path
+import pandas as pd
+
+from door_toolkit.utils import (
+    load_response_matrix,
+    load_odor_metadata,
+    list_odorants,
+    get_receptor_info,
+    validate_cache
+)
+
+
+pytestmark = pytest.mark.skipif(
+    not Path("door_cache").exists(),
+    reason="DoOR cache not found. Run DoORExtractor first."
+)
+
+
+class TestUtils:
+    """Test utility functions."""
+    
+    def test_load_response_matrix_parquet(self):
+        """Test loading response matrix in parquet format."""
+        df = load_response_matrix("door_cache", format="parquet")
+        assert isinstance(df, pd.DataFrame)
+        assert df.shape == (693, 78)
+    
+    def test_load_response_matrix_csv(self):
+        """Test loading response matrix in CSV format."""
+        df = load_response_matrix("door_cache", format="csv")
+        assert isinstance(df, pd.DataFrame)
+        assert df.shape == (693, 78)
+    
+    def test_load_response_matrix_numpy(self):
+        """Test loading response matrix from NumPy."""
+        df = load_response_matrix("door_cache", format="numpy")
+        assert isinstance(df, pd.DataFrame)
+        assert df.shape == (693, 78)
+    
+    def test_load_odor_metadata(self):
+        """Test loading odor metadata."""
+        meta = load_odor_metadata("door_cache")
+        assert isinstance(meta, pd.DataFrame)
+        assert len(meta) == 693
+        assert "Name" in meta.columns
+        assert "CAS" in meta.columns
+    
+    def test_list_odorants(self):
+        """Test listing odorants."""
+        odors = list_odorants("door_cache")
+        assert len(odors) > 0
+        
+        # Test pattern filtering
+        acetates = list_odorants("door_cache", pattern="acetate")
+        assert all("acetate" in o.lower() for o in acetates)
+    
+    def test_get_receptor_info(self):
+        """Test receptor coverage info."""
+        info = get_receptor_info("door_cache")
+        assert isinstance(info, pd.DataFrame)
+        assert len(info) == 78
+        assert "receptor" in info.columns
+        assert "n_odorants_tested" in info.columns
+        assert "coverage_pct" in info.columns
+    
+    def test_validate_cache(self):
+        """Test cache validation."""
+        is_valid = validate_cache("door_cache")
+        assert is_valid is True
+    
+    def test_validate_cache_invalid(self):
+        """Test validation with invalid cache."""
+        is_valid = validate_cache("nonexistent_cache")
+        assert is_valid is False
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

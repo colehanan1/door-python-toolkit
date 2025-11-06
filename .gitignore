@@ -127,6 +127,7 @@ door_cache/
 *.parquet
 *.npy
 *.RData
+data/raw/
 
 # IDE
 .vscode/

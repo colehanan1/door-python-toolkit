@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -gt 1 ]]; then
+    echo "Usage: $(basename "$0") [cache_dir]" >&2
+    exit 2
+fi
+
+CACHE_DIR="${1:-door_cache}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PYTHON_BIN="${PYTHON:-python}"
+
+export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
+
+"${PYTHON_BIN}" - <<PY
+from door_toolkit.utils import validate_cache
+import sys
+cache = r"${CACHE_DIR}"
+
+if validate_cache(cache):
+    print(f"✓ Cache is valid: {cache}")
+else:
+    print(f"✗ Cache validation failed: {cache}")
+    sys.exit(1)
+PY

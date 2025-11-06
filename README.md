@@ -250,14 +250,27 @@ Helper functions in `door_toolkit.utils`:
 git clone https://github.com/yourusername/door-python-toolkit.git
 cd door-python-toolkit
 
-# Install in development mode
-pip install -e .[dev]
+# Create and activate a virtualenv (optional but recommended)
+python -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies and expose the CLI locally
+make install-dev    # equivalent to: pip install -e .[dev]
+
+# Extract DoOR data (defaults use data/raw/DoOR.data-2.0.0/data -> door_cache)
+make extract INPUT=path/to/DoOR.data/data OUTPUT=door_cache
+# or run the helper script directly:
+./scripts/door-extract --input path/to/DoOR.data/data --output door_cache
+
+# Validate a cache
+./scripts/validate-cache door_cache
 
 # Run tests
-pytest tests/
+make test
 
-# Format code
-black door_toolkit/
+# Lint and format
+make lint
+make format
 ```
 
 ---
@@ -291,7 +304,9 @@ wget https://github.com/ropensci/DoOR.data/archive/refs/tags/v2.0.0.zip
 unzip v2.0.0.zip
 
 # Extract to Python
-python -c "from door_toolkit import DoORExtractor; DoORExtractor('DoOR.data-2.0.0/data', 'door_cache').run()"
+door-extract --input DoOR.data-2.0.0/data --output door_cache
+# or, from a local checkout without installing:
+./scripts/door-extract --input DoOR.data-2.0.0/data --output door_cache
 ```
 
 ---
@@ -310,8 +325,10 @@ Contributions welcome! Please:
 ```bash
 git clone https://github.com/yourusername/door-python-toolkit.git
 cd door-python-toolkit
-pip install -e .[dev]
-pytest tests/
+python -m venv .venv
+source .venv/bin/activate
+make install-dev
+make test
 ```
 
 ---

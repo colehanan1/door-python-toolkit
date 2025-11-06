@@ -418,7 +418,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - DoOR database creators: Daniel Münch & C. Giovanni Galizia
 - Original R package: rOpenSci DoOR project
-- Contributors: [List contributors]
+- Contributors: Cole Hanan
 
 ---
 

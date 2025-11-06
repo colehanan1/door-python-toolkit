@@ -1,0 +1,56 @@
+Network Statistical Analysis Report
+======================================================================
+
+Basic Network Statistics:
+  Nodes: 1,609
+  Edges: 22,453
+  Glomeruli: 38
+
+Hub Neurons (top 5% by degree):
+  1. lLN2F_b (degree: 696)
+  2. lLN2F_b (degree: 662)
+  3. lLN2F_b (degree: 655)
+  4. lLN2F_b (degree: 591)
+  5. lLN2X04 (degree: 295)
+  6. lLN2T_e (degree: 289)
+  7. lLN2T_e (degree: 286)
+  8. lLN2X04 (degree: 277)
+  9. lLN2X04 (degree: 272)
+  10. lLN2T_e (degree: 270)
+
+Community Detection (glomerulus level):
+  Number of communities: 15
+  Community sizes:
+    Community 0: 1 glomeruli
+    Community 1: 1 glomeruli
+    Community 2: 1 glomeruli
+    Community 3: 1 glomeruli
+    Community 4: 1 glomeruli
+    Community 5: 1 glomeruli
+    Community 6: 1 glomeruli
+    Community 7: 1 glomeruli
+    Community 8: 3 glomeruli
+    Community 9: 1 glomeruli
+    Community 10: 1 glomeruli
+    Community 11: 1 glomeruli
+    Community 12: 1 glomeruli
+    Community 13: 22 glomeruli
+    Community 14: 1 glomeruli
+
+Path Length Statistics:
+  Mean path length: 3.98
+  Median path length: 4.0
+  Max path length: 8
+
+Clustering Coefficients (glomerulus level):
+  Average clustering: 0.1232
+
+Asymmetry Analysis:
+  Mean asymmetry ratio: 0.000
+  Std asymmetry ratio: 1.009
+  Most asymmetric connections (forward >> reverse):
+    ORN_VM3 → ORN_DP1l: 1.000
+    ORN_VM5v → ORN_DP1l: 1.000
+    ORN_VM6v → ORN_VL1: 1.000
+    ORN_VM6v → ORN_VL2p: 1.000
+    ORN_VM7d → ORN_VL2p: 1.000

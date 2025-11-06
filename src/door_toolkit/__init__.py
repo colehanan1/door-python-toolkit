@@ -2,10 +2,11 @@
 DoOR Python Toolkit
 ===================
 
-Python tools for working with the DoOR (Database of Odorant Responses) database.
+Python tools for working with the DoOR (Database of Odorant Responses) database
+and FlyWire connectomics data.
 
-Extract, analyze, and integrate Drosophila odorant-receptor response data in pure Python.
-No R installation required.
+Extract, analyze, and integrate Drosophila odorant-receptor response data and
+neural connectivity in pure Python. No R installation required.
 
 Basic Usage:
     >>> from door_toolkit import DoORExtractor, DoOREncoder
@@ -37,6 +38,12 @@ Advanced Features:
     >>> preprocessor = DoORNeuralPreprocessor("door_cache")
     >>> sparse_data = preprocessor.create_sparse_encoding(sparsity_level=0.05)
 
+    >>> # Connectomics (NEW in v0.3.0)
+    >>> from door_toolkit.connectomics import CrossTalkNetwork
+    >>> network = CrossTalkNetwork.from_csv("interglomerular_crosstalk_pathways.csv")
+    >>> network.set_min_synapse_threshold(10)
+    >>> print(network.summary())
+
 Modules:
     extractor: Extract DoOR R data to Python formats
     encoder: Encode odorant names to neural activation patterns
@@ -44,11 +51,12 @@ Modules:
     flywire: FlyWire community labels integration
     pathways: Olfactory pathway analysis and experiment generation
     neural: Neural network preprocessing and sparse encoding
+    connectomics: Interglomerular cross-talk network analysis (NEW)
 
 For more information, see: https://github.com/colehanan1/door-python-toolkit
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __author__ = "Cole Hanan"
 __license__ = "MIT"
 

@@ -1,0 +1,4 @@
+pair,pathways_forward,pathways_reverse,strength_forward,strength_reverse,asymmetry,shared_LNs
+ORN_DL5 vs ORN_VA1v,0,0,0,0,0.0,0
+ORN_DL5 vs ORN_DA1,0,0,0,0,0.0,0
+ORN_VA1v vs ORN_DA1,0,0,0,0,0.0,0

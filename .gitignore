@@ -144,3 +144,5 @@ Thumbs.db
 # Test data
 test_cache/
 test_data/
+
+data/

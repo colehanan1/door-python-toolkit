@@ -29,9 +29,10 @@ import pandas as pd
 
 try:
     import pyreadr
+    PYREADR_AVAILABLE = True
 except ImportError:
-    print("ERROR: pyreadr not installed. Install with: pip install pyreadr", file=sys.stderr)
-    sys.exit(1)
+    pyreadr = None
+    PYREADR_AVAILABLE = False
 
 # Configure logging
 logging.basicConfig(
@@ -52,9 +53,15 @@ class DoORExtractor:
     """
     
     def __init__(self, input_dir: Path, output_dir: Path):
+        if not PYREADR_AVAILABLE:
+            raise ImportError(
+                "pyreadr is required for DoORExtractor but is not installed. "
+                "Install it with: pip install pyreadr"
+            )
+
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
-        
+
         # Validate input
         if not self.input_dir.exists():
             raise FileNotFoundError(f"Input directory not found: {self.input_dir}")

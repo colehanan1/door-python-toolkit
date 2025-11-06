@@ -26,11 +26,11 @@ Modules:
     encoder: Encode odorant names to neural activation patterns
     utils: Helper functions and data loaders
 
-For more information, see: https://github.com/yourusername/door-python-toolkit
+For more information, see: https://github.com/colehanan1/door-python-toolkit
 """
 
 __version__ = "0.1.0"
-__author__ = "Your Name"
+__author__ = "Cole Hanan"
 __license__ = "MIT"
 
 from door_toolkit.extractor import DoORExtractor

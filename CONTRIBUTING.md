@@ -10,7 +10,7 @@ Be respectful, inclusive, and constructive. We're all here to advance Drosophila
 
 ### Reporting Bugs
 
-1. Check [existing issues](https://github.com/yourusername/door-python-toolkit/issues) first
+1. Check [existing issues](https://github.com/colehanan1/door-python-toolkit/issues) first
 2. Create a new issue with:
    - Clear description of the bug
    - Steps to reproduce
@@ -30,7 +30,7 @@ Be respectful, inclusive, and constructive. We're all here to advance Drosophila
 
 ```bash
 # Fork and clone
-git clone https://github.com/yourusername/door-python-toolkit.git
+git clone https://github.com/colehanan1/door-python-toolkit.git
 cd door-python-toolkit
 
 # Create virtual environment
@@ -210,7 +210,7 @@ class TestDoOREncoder:
 
 - Open an issue for questions
 - Check [documentation](https://door-python-toolkit.readthedocs.io)
-- Email: your.email@example.com
+- Email: c.b.hanan@wustl.edu
 
 ## Recognition
 

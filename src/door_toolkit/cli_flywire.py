@@ -22,17 +22,17 @@ def flywire_main():
         epilog="""
 Examples:
   # Map DoOR receptors to FlyWire cells
-  door-flywire --labels processed_labels.csv.gz --cache door_cache --map-receptors
+  door-flywire --labels data/flywire/processed_labels.csv.gz --cache door_cache --map-receptors
 
   # Find specific receptor cells
-  door-flywire --labels processed_labels.csv.gz --find-receptor Or42b
+  door-flywire --labels data/flywire/processed_labels.csv.gz --find-receptor Or7a
 
   # Create spatial activation map
-  door-flywire --labels processed_labels.csv.gz --cache door_cache \\
+  door-flywire --labels data/flywire/processed_labels.csv.gz --cache door_cache \\
     --spatial-map "ethyl butyrate" --output spatial_map.json
 
   # Export receptor mappings
-  door-flywire --labels processed_labels.csv.gz --cache door_cache \\
+  door-flywire --labels data/flywire/processed_labels.csv.gz --cache door_cache \\
     --map-receptors --output flywire_mapping.json
         """,
     )

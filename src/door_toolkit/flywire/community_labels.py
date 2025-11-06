@@ -160,6 +160,7 @@ class CommunityLabelsParser:
             "root_id": "root_id",
             "tag": "label",
             "cell_type": "label",
+            "processed_labels": "label",  # FlyWire standard format
             "pt_position_x": "position_x",
             "pt_position_y": "position_y",
             "pt_position_z": "position_z",

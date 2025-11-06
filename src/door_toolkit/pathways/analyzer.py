@@ -169,7 +169,13 @@ class PathwayAnalyzer:
         or47b_responses = []
         odorant_responses = {}
 
-        for odorant in key_odorants:
+        # Filter to only odorants that exist in the database
+        available_odorants = [o for o in key_odorants if o in self.encoder.odorant_names]
+        if not available_odorants:
+            logger.warning(f"None of the key odorants {key_odorants} found in DoOR database")
+            logger.info(f"Available similar odorants: {[o for o in self.encoder.odorant_names if 'hexanol' in o.lower()][:5]}")
+
+        for odorant in available_odorants:
             try:
                 response_vector = self.encoder.encode(odorant)
 

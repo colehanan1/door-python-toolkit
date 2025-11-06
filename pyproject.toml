@@ -20,6 +20,10 @@ keywords = [
     "odorant",
     "receptor",
     "bioinformatics",
+    "flywire",
+    "connectomics",
+    "neural-network",
+    "machine-learning",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -40,11 +44,31 @@ dependencies = [
     "pandas>=1.5.0",
     "numpy>=1.21.0",
     "pyarrow>=12.0.0",
+    "scipy>=1.9.0",
+    "scikit-learn>=1.1.0",
+    "networkx>=2.8",
+    "tqdm>=4.64.0",
 ]
 
 [project.optional-dependencies]
 extract = ["pyreadr>=0.4.7"]
 torch = ["torch>=2.0.0"]
+flywire = [
+    "plotly>=5.11.0",
+    "seaborn>=0.11.0",
+    "matplotlib>=3.5.0",
+]
+spatial = ["trimesh>=3.15.0"]
+h5 = ["h5py>=3.7.0"]
+all = [
+    "pyreadr>=0.4.7",
+    "torch>=2.0.0",
+    "plotly>=5.11.0",
+    "seaborn>=0.11.0",
+    "matplotlib>=3.5.0",
+    "trimesh>=3.15.0",
+    "h5py>=3.7.0",
+]
 dev = [
     'tomli>=2.0.1; python_version<"3.11"',
     "pytest>=7.0.0",
@@ -67,6 +91,9 @@ Changelog = "https://github.com/colehanan1/DoOR-python-toolkit/blob/main/CHANGEL
 
 [project.scripts]
 door-extract = "door_toolkit.cli:extract_main"
+door-flywire = "door_toolkit.cli_flywire:flywire_main"
+door-pathways = "door_toolkit.cli_pathways:pathways_main"
+door-neural = "door_toolkit.cli_neural:neural_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/door_toolkit"]

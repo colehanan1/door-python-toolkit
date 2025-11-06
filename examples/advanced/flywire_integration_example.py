@@ -19,7 +19,7 @@ print("=" * 70)
 
 # Initialize mapper
 mapper = FlyWireMapper(
-    community_labels_path="data/processed_labels.csv.gz",
+    community_labels_path="data/flywire/processed_labels.csv.gz",
     door_cache_path="door_cache",
     auto_parse=True,  # Automatically parse labels
 )

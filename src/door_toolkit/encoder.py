@@ -123,9 +123,7 @@ class DoOREncoder:
             f"{self.n_channels} receptor channels"
         )
 
-    def encode(
-        self, odor_name: str | List[str], fill_missing: float = 0.0
-    ):
+    def encode(self, odor_name: str | List[str], fill_missing: float = 0.0):
         """
         Encode one or more odorants to PN activation vector(s).
 

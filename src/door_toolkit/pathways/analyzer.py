@@ -132,9 +132,7 @@ class PathwayAnalyzer:
             FileNotFoundError: If cache directory not found
         """
         self.door_cache_path = Path(door_cache_path)
-        self.flywire_data_path = (
-            Path(flywire_data_path) if flywire_data_path else None
-        )
+        self.flywire_data_path = Path(flywire_data_path) if flywire_data_path else None
 
         if not self.door_cache_path.exists():
             raise FileNotFoundError(f"DoOR cache not found: {self.door_cache_path}")
@@ -143,7 +141,9 @@ class PathwayAnalyzer:
         self.encoder = DoOREncoder(str(self.door_cache_path), use_torch=False)
         self.response_matrix = load_response_matrix(str(self.door_cache_path))
 
-        logger.info(f"Initialized PathwayAnalyzer with {len(self.response_matrix.columns)} receptors")
+        logger.info(
+            f"Initialized PathwayAnalyzer with {len(self.response_matrix.columns)} receptors"
+        )
 
     def trace_or47b_feeding_pathway(self) -> PathwayResult:
         """
@@ -173,7 +173,9 @@ class PathwayAnalyzer:
         available_odorants = [o for o in key_odorants if o in self.encoder.odorant_names]
         if not available_odorants:
             logger.warning(f"None of the key odorants {key_odorants} found in DoOR database")
-            logger.info(f"Available similar odorants: {[o for o in self.encoder.odorant_names if 'hexanol' in o.lower()][:5]}")
+            logger.info(
+                f"Available similar odorants: {[o for o in self.encoder.odorant_names if 'hexanol' in o.lower()][:5]}"
+            )
 
         for odorant in available_odorants:
             try:
@@ -205,9 +207,7 @@ class PathwayAnalyzer:
             logger.warning("No Or47b responses found for key odorants")
 
         # Calculate receptor contributions
-        receptor_contributions = self._calculate_receptor_contributions(
-            key_odorants, ["Or47b"]
-        )
+        receptor_contributions = self._calculate_receptor_contributions(key_odorants, ["Or47b"])
 
         pathway = PathwayResult(
             pathway_name="Or47b → Hexanol → Feeding",
@@ -270,9 +270,7 @@ class PathwayAnalyzer:
 
         pathway_strength = float(np.mean(or42b_responses)) if or42b_responses else 0.0
 
-        receptor_contributions = self._calculate_receptor_contributions(
-            key_odorants, ["Or42b"]
-        )
+        receptor_contributions = self._calculate_receptor_contributions(key_odorants, ["Or42b"])
 
         pathway = PathwayResult(
             pathway_name="Or42b → Fruit Esters → Attraction",
@@ -344,9 +342,7 @@ class PathwayAnalyzer:
 
         pathway_strength = float(np.mean(all_responses)) if all_responses else 0.0
 
-        receptor_contributions = self._calculate_receptor_contributions(
-            odorants, receptors
-        )
+        receptor_contributions = self._calculate_receptor_contributions(odorants, receptors)
 
         pathway = PathwayResult(
             pathway_name=f"Custom: {', '.join(receptors)} → {behavior}",
@@ -417,9 +413,7 @@ class PathwayAnalyzer:
         # Normalize to sum to 1
         total = sum(importance_scores.values())
         if total > 0:
-            importance_scores = {
-                k: v / total for k, v in importance_scores.items()
-            }
+            importance_scores = {k: v / total for k, v in importance_scores.items()}
 
         logger.info(f"Computed importance scores for {len(importance_scores)} receptors")
         return importance_scores
@@ -453,8 +447,7 @@ class PathwayAnalyzer:
         ]
 
         logger.info(
-            f"Found {len(critical_receptors)} critical blocking targets "
-            f"(threshold={threshold})"
+            f"Found {len(critical_receptors)} critical blocking targets " f"(threshold={threshold})"
         )
 
         return critical_receptors
@@ -505,9 +498,7 @@ class PathwayAnalyzer:
 
         return result
 
-    def compare_pathways(
-        self, pathways: List[PathwayResult]
-    ) -> pd.DataFrame:
+    def compare_pathways(self, pathways: List[PathwayResult]) -> pd.DataFrame:
         """
         Compare multiple pathways quantitatively.
 
@@ -531,7 +522,9 @@ class PathwayAnalyzer:
                 "target_behavior": pathway.target_behavior,
                 "strength": pathway.strength,
                 "n_receptors": len(pathway.source_receptors),
-                "primary_receptor": pathway.source_receptors[0] if pathway.source_receptors else None,
+                "primary_receptor": (
+                    pathway.source_receptors[0] if pathway.source_receptors else None
+                ),
             }
             rows.append(row)
 

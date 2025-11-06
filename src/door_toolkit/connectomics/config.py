@@ -26,52 +26,58 @@ class BiophysicalParameters:
     """
 
     # ORN (Olfactory Receptor Neuron) parameters
-    orn_params: Dict[str, float] = field(default_factory=lambda: {
-        "tau_m": 20.0,              # Membrane time constant (ms)
-        "tau_ref": 2.0,             # Refractory period (ms)
-        "v_rest": -65.0,            # Resting potential (mV)
-        "v_thresh": -50.0,          # Threshold potential (mV)
-        "v_reset": -70.0,           # Reset potential (mV)
-        "cm": 0.2,                  # Membrane capacitance (nF)
-        "r_m": 100.0,               # Membrane resistance (MOhm)
-    })
+    orn_params: Dict[str, float] = field(
+        default_factory=lambda: {
+            "tau_m": 20.0,  # Membrane time constant (ms)
+            "tau_ref": 2.0,  # Refractory period (ms)
+            "v_rest": -65.0,  # Resting potential (mV)
+            "v_thresh": -50.0,  # Threshold potential (mV)
+            "v_reset": -70.0,  # Reset potential (mV)
+            "cm": 0.2,  # Membrane capacitance (nF)
+            "r_m": 100.0,  # Membrane resistance (MOhm)
+        }
+    )
 
     # LN (Local Neuron) parameters - primarily GABAergic inhibitory
-    ln_params: Dict[str, float] = field(default_factory=lambda: {
-        "tau_m": 15.0,              # Faster time constant
-        "tau_ref": 1.5,             # Shorter refractory period
-        "v_rest": -60.0,
-        "v_thresh": -45.0,
-        "v_reset": -65.0,
-        "cm": 0.15,
-        "r_m": 80.0,
-    })
+    ln_params: Dict[str, float] = field(
+        default_factory=lambda: {
+            "tau_m": 15.0,  # Faster time constant
+            "tau_ref": 1.5,  # Shorter refractory period
+            "v_rest": -60.0,
+            "v_thresh": -45.0,
+            "v_reset": -65.0,
+            "cm": 0.15,
+            "r_m": 80.0,
+        }
+    )
 
     # PN (Projection Neuron) parameters - cholinergic excitatory
-    pn_params: Dict[str, float] = field(default_factory=lambda: {
-        "tau_m": 25.0,              # Longer time constant
-        "tau_ref": 2.0,
-        "v_rest": -65.0,
-        "v_thresh": -48.0,
-        "v_reset": -68.0,
-        "cm": 0.25,
-        "r_m": 120.0,
-    })
+    pn_params: Dict[str, float] = field(
+        default_factory=lambda: {
+            "tau_m": 25.0,  # Longer time constant
+            "tau_ref": 2.0,
+            "v_rest": -65.0,
+            "v_thresh": -48.0,
+            "v_reset": -68.0,
+            "cm": 0.25,
+            "r_m": 120.0,
+        }
+    )
 
     # Synaptic parameters
-    synapse_params: Dict[str, float] = field(default_factory=lambda: {
-        # Excitatory (acetylcholine) - ORN→PN, PN→downstream
-        "tau_ach": 5.0,             # ACh time constant (ms)
-        "e_ach": 0.0,               # ACh reversal potential (mV)
-
-        # Inhibitory (GABA) - LN→target
-        "tau_gaba": 10.0,           # GABA_A time constant (ms)
-        "e_gaba": -80.0,            # GABA reversal potential (mV)
-
-        # Synaptic delays
-        "delay_fast": 0.5,          # Fast connections (ms)
-        "delay_slow": 2.0,          # Slow connections (ms)
-    })
+    synapse_params: Dict[str, float] = field(
+        default_factory=lambda: {
+            # Excitatory (acetylcholine) - ORN→PN, PN→downstream
+            "tau_ach": 5.0,  # ACh time constant (ms)
+            "e_ach": 0.0,  # ACh reversal potential (mV)
+            # Inhibitory (GABA) - LN→target
+            "tau_gaba": 10.0,  # GABA_A time constant (ms)
+            "e_gaba": -80.0,  # GABA reversal potential (mV)
+            # Synaptic delays
+            "delay_fast": 0.5,  # Fast connections (ms)
+            "delay_slow": 2.0,  # Slow connections (ms)
+        }
+    )
 
 
 @dataclass
@@ -115,9 +121,7 @@ class NetworkConfig:
     dt: float = 0.1  # ms
 
     # Biophysical parameters
-    biophysical_params: BiophysicalParameters = field(
-        default_factory=BiophysicalParameters
-    )
+    biophysical_params: BiophysicalParameters = field(default_factory=BiophysicalParameters)
 
     # Visualization parameters
     viz_node_size_range: tuple = (10, 100)
@@ -135,13 +139,15 @@ class NetworkConfig:
     layout_seed: Optional[int] = 42  # For reproducibility
 
     # Data file paths (can be overridden)
-    default_data_paths: Dict[str, str] = field(default_factory=lambda: {
-        "full": "interglomerular_crosstalk_pathways.csv",
-        "orn_ln_orn": "crosstalk_ORN_LN_ORN.csv",
-        "orn_ln_pn": "crosstalk_ORN_LN_PN.csv",
-        "orn_pn_feedback": "crosstalk_ORN_PN_feedback.csv",
-        "glomerulus_matrix": "crosstalk_matrix_glomerulus.csv",
-    })
+    default_data_paths: Dict[str, str] = field(
+        default_factory=lambda: {
+            "full": "interglomerular_crosstalk_pathways.csv",
+            "orn_ln_orn": "crosstalk_ORN_LN_ORN.csv",
+            "orn_ln_pn": "crosstalk_ORN_LN_PN.csv",
+            "orn_pn_feedback": "crosstalk_ORN_PN_feedback.csv",
+            "glomerulus_matrix": "crosstalk_matrix_glomerulus.csv",
+        }
+    )
 
     def set_min_synapse_threshold(self, threshold: int) -> None:
         """Set minimum synapse threshold for connection inclusion."""
@@ -150,10 +156,7 @@ class NetworkConfig:
         self.min_synapse_threshold = threshold
 
     def set_pathway_filters(
-        self,
-        orn_ln_orn: bool = True,
-        orn_ln_pn: bool = True,
-        orn_pn_feedback: bool = True
+        self, orn_ln_orn: bool = True, orn_ln_pn: bool = True, orn_pn_feedback: bool = True
     ) -> None:
         """
         Set which pathway types to include in the network.
@@ -249,36 +252,42 @@ class NetworkConfig:
 
     def to_json(self, filepath: str) -> None:
         """Save configuration to JSON file."""
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
-    def from_json(cls, filepath: str) -> 'NetworkConfig':
+    def from_json(cls, filepath: str) -> "NetworkConfig":
         """Load configuration from JSON file."""
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             data = json.load(f)
 
         config = cls()
 
         # Update basic parameters
-        for key in ['min_synapse_threshold', 'max_synapse_threshold',
-                    'include_orn_ln_orn', 'include_orn_ln_pn',
-                    'include_orn_pn_feedback', 'weight_scaling_factor',
-                    'simulation_time', 'dt']:
+        for key in [
+            "min_synapse_threshold",
+            "max_synapse_threshold",
+            "include_orn_ln_orn",
+            "include_orn_ln_pn",
+            "include_orn_pn_feedback",
+            "weight_scaling_factor",
+            "simulation_time",
+            "dt",
+        ]:
             if key in data:
                 setattr(config, key, data[key])
 
         # Update biophysical parameters if present
-        if 'biophysical_params' in data:
-            bp_data = data['biophysical_params']
-            if 'orn' in bp_data:
-                config.biophysical_params.orn_params.update(bp_data['orn'])
-            if 'ln' in bp_data:
-                config.biophysical_params.ln_params.update(bp_data['ln'])
-            if 'pn' in bp_data:
-                config.biophysical_params.pn_params.update(bp_data['pn'])
-            if 'synapse' in bp_data:
-                config.biophysical_params.synapse_params.update(bp_data['synapse'])
+        if "biophysical_params" in data:
+            bp_data = data["biophysical_params"]
+            if "orn" in bp_data:
+                config.biophysical_params.orn_params.update(bp_data["orn"])
+            if "ln" in bp_data:
+                config.biophysical_params.ln_params.update(bp_data["ln"])
+            if "pn" in bp_data:
+                config.biophysical_params.pn_params.update(bp_data["pn"])
+            if "synapse" in bp_data:
+                config.biophysical_params.synapse_params.update(bp_data["synapse"])
 
         return config
 
@@ -299,20 +308,12 @@ def get_strong_connections_config() -> NetworkConfig:
 def get_lateral_inhibition_config() -> NetworkConfig:
     """Get configuration focused on lateral inhibition (ORN→LN→ORN only)."""
     config = NetworkConfig()
-    config.set_pathway_filters(
-        orn_ln_orn=True,
-        orn_ln_pn=False,
-        orn_pn_feedback=False
-    )
+    config.set_pathway_filters(orn_ln_orn=True, orn_ln_pn=False, orn_pn_feedback=False)
     return config
 
 
 def get_feedforward_config() -> NetworkConfig:
     """Get configuration for feedforward pathways only."""
     config = NetworkConfig()
-    config.set_pathway_filters(
-        orn_ln_orn=False,
-        orn_ln_pn=True,
-        orn_pn_feedback=False
-    )
+    config.set_pathway_filters(orn_ln_orn=False, orn_ln_pn=True, orn_pn_feedback=False)
     return config

@@ -105,9 +105,7 @@ class SpatialActivationMap:
         filtered_points = [p for p in self.points if p[3] >= threshold]
 
         # Filter receptor data as well
-        filtered_receptors = {
-            k: v for k, v in self.receptor_data.items() if v >= threshold
-        }
+        filtered_receptors = {k: v for k, v in self.receptor_data.items() if v >= threshold}
 
         return SpatialActivationMap(
             odorant_name=self.odorant_name,
@@ -203,10 +201,7 @@ class SpatialActivationMap:
         return {
             "odorant_name": self.odorant_name,
             "n_points": self.n_points,
-            "points": [
-                {"x": x, "y": y, "z": z, "intensity": i}
-                for x, y, z, i in self.points
-            ],
+            "points": [{"x": x, "y": y, "z": z, "intensity": i} for x, y, z, i in self.points],
             "receptor_data": self.receptor_data,
             "statistics": {
                 "mean_activation": self.mean_activation,
@@ -352,9 +347,7 @@ def create_activation_heatmap(
     )
 
     # Normalize counts
-    counts, _, _ = np.histogram2d(
-        x_coords, y_coords, bins=resolution, range=[x_range, y_range]
-    )
+    counts, _, _ = np.histogram2d(x_coords, y_coords, bins=resolution, range=[x_range, y_range])
     counts[counts == 0] = 1  # Avoid division by zero
     heatmap = heatmap / counts
 
@@ -416,9 +409,7 @@ def visualize_spatial_map(
 
     # XY projection heatmap
     ax2 = fig.add_subplot(132)
-    heatmap, x_range, y_range = create_activation_heatmap(
-        spatial_map, dimension="xy"
-    )
+    heatmap, x_range, y_range = create_activation_heatmap(spatial_map, dimension="xy")
     im = ax2.imshow(
         heatmap,
         extent=[*x_range, *y_range],
@@ -433,9 +424,7 @@ def visualize_spatial_map(
 
     # XZ projection heatmap
     ax3 = fig.add_subplot(133)
-    heatmap, x_range, z_range = create_activation_heatmap(
-        spatial_map, dimension="xz"
-    )
+    heatmap, x_range, z_range = create_activation_heatmap(spatial_map, dimension="xz")
     im = ax3.imshow(
         heatmap,
         extent=[*x_range, *z_range],

@@ -113,9 +113,7 @@ class BehavioralPredictor:
 
         logger.info("Initialized BehavioralPredictor")
 
-    def predict_behavior(
-        self, odorant: str, threshold: float = 0.3
-    ) -> BehaviorPrediction:
+    def predict_behavior(self, odorant: str, threshold: float = 0.3) -> BehaviorPrediction:
         """
         Predict behavioral response to an odorant.
 
@@ -188,9 +186,9 @@ class BehavioralPredictor:
             predicted_valence = f"{predicted_valence} (feeding)"
 
         # Find key contributors
-        key_contributors = sorted(
-            receptor_pattern.items(), key=lambda x: abs(x[1]), reverse=True
-        )[:5]
+        key_contributors = sorted(receptor_pattern.items(), key=lambda x: abs(x[1]), reverse=True)[
+            :5
+        ]
 
         prediction = BehaviorPrediction(
             odorant_name=odorant,
@@ -200,10 +198,7 @@ class BehavioralPredictor:
             key_contributors=key_contributors,
         )
 
-        logger.info(
-            f"Predicted {odorant}: {predicted_valence} "
-            f"(confidence: {confidence:.2%})"
-        )
+        logger.info(f"Predicted {odorant}: {predicted_valence} " f"(confidence: {confidence:.2%})")
 
         return prediction
 
@@ -238,9 +233,7 @@ class BehavioralPredictor:
 
         return predictions
 
-    def compare_odorants(
-        self, odorant1: str, odorant2: str
-    ) -> Dict[str, any]:
+    def compare_odorants(self, odorant1: str, odorant2: str) -> Dict[str, any]:
         """
         Compare predicted behaviors between two odorants.
 
@@ -260,9 +253,7 @@ class BehavioralPredictor:
         pred2 = self.predict_behavior(odorant2)
 
         # Calculate pattern similarity (cosine similarity)
-        all_receptors = set(pred1.receptor_pattern.keys()) | set(
-            pred2.receptor_pattern.keys()
-        )
+        all_receptors = set(pred1.receptor_pattern.keys()) | set(pred2.receptor_pattern.keys())
 
         vec1 = np.array([pred1.receptor_pattern.get(r, 0.0) for r in all_receptors])
         vec2 = np.array([pred2.receptor_pattern.get(r, 0.0) for r in all_receptors])
@@ -368,9 +359,7 @@ class BehavioralPredictor:
             }
 
             # Add top 3 contributors
-            for i, (receptor, contribution) in enumerate(
-                pred.key_contributors[:3], 1
-            ):
+            for i, (receptor, contribution) in enumerate(pred.key_contributors[:3], 1):
                 row[f"top_receptor_{i}"] = receptor
                 row[f"contribution_{i}"] = contribution
 
@@ -386,9 +375,7 @@ class BehavioralPredictor:
 
         return df
 
-    def validate_known_behaviors(
-        self, known_behaviors: Dict[str, str]
-    ) -> Dict[str, float]:
+    def validate_known_behaviors(self, known_behaviors: Dict[str, str]) -> Dict[str, float]:
         """
         Validate predictor against known behavioral data.
 
@@ -429,8 +416,6 @@ class BehavioralPredictor:
             "error_rate": 1.0 - accuracy,
         }
 
-        logger.info(
-            f"Validation: {correct}/{total} correct ({accuracy:.2%} accuracy)"
-        )
+        logger.info(f"Validation: {correct}/{total} correct ({accuracy:.2%} accuracy)")
 
         return metrics

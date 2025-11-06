@@ -323,9 +323,7 @@ class ConcentrationResponseModel:
                 continue
 
             try:
-                params = self.fit_hill_equation(
-                    concentrations[mask], responses[mask]
-                )
+                params = self.fit_hill_equation(concentrations[mask], responses[mask])
                 odorant_params[odorant] = params
             except Exception as e:
                 logger.warning(f"Failed to fit {odorant}: {e}")
@@ -417,9 +415,7 @@ class ConcentrationResponseModel:
             )
 
             if add_noise:
-                responses = self.add_concentration_noise(
-                    responses, noise_level=noise_level
-                )
+                responses = self.add_concentration_noise(responses, noise_level=noise_level)
 
             for c, r in zip(concentrations, responses):
                 rows.append(
@@ -436,8 +432,7 @@ class ConcentrationResponseModel:
 
         df = pd.DataFrame(rows)
         logger.info(
-            f"Created dose-response dataset: {len(df)} data points, "
-            f"{len(params_dict)} odorants"
+            f"Created dose-response dataset: {len(df)} data points, " f"{len(params_dict)} odorants"
         )
 
         return df

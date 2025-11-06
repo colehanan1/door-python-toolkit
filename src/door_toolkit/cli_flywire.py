@@ -108,7 +108,9 @@ Examples:
     try:
         # Initialize mapper
         logger.info(f"Loading FlyWire community labels from {args.labels}")
-        mapper = FlyWireMapper(str(args.labels), door_cache_path=str(args.cache) if args.cache else None)
+        mapper = FlyWireMapper(
+            str(args.labels), door_cache_path=str(args.cache) if args.cache else None
+        )
         mapper.parse_labels(show_progress=True)
 
         # Find specific receptor
@@ -145,9 +147,7 @@ Examples:
 
             # Show top 10 receptors by cell count
             print(f"\nTop 10 receptors by cell count:")
-            sorted_mappings = sorted(
-                mappings.items(), key=lambda x: x[1].cell_count, reverse=True
-            )
+            sorted_mappings = sorted(mappings.items(), key=lambda x: x[1].cell_count, reverse=True)
             for receptor, mapping in sorted_mappings[:10]:
                 print(f"  {receptor}: {mapping.cell_count} cells")
 
@@ -179,9 +179,7 @@ Examples:
                 logger.info("Mapping receptors first...")
                 mapper.map_door_to_flywire(str(args.cache))
 
-            spatial_map = mapper.create_spatial_activation_map(
-                args.spatial_map, str(args.cache)
-            )
+            spatial_map = mapper.create_spatial_activation_map(args.spatial_map, str(args.cache))
 
             print(f"\nSpatial Activation Map: {args.spatial_map}")
             print(f"Active receptors: {len(spatial_map.receptor_activations)}")

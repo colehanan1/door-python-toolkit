@@ -117,7 +117,9 @@ class ExperimentProtocol:
             lines.append(f"### Step {step.step_number}: {step.action}")
             lines.append(f"- **Target:** {step.target}")
             lines.append(f"- **Method:** {step.method}")
-            lines.append(f"- **Parameters:** {', '.join(f'{k}={v}' for k, v in step.parameters.items())}")
+            lines.append(
+                f"- **Parameters:** {', '.join(f'{k}={v}' for k, v in step.parameters.items())}"
+            )
             lines.append(f"- **Expected Outcome:** {step.expected_outcome}")
             lines.append(f"- **Measurement:** {step.measurement}\n")
 

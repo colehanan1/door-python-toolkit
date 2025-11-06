@@ -145,9 +145,7 @@ class SparseEncoder:
         elif method == "threshold":
             if threshold is None:
                 # Auto-compute threshold to achieve target sparsity
-                threshold = np.percentile(
-                    kc_activations, (1 - self.sparsity) * 100
-                )
+                threshold = np.percentile(kc_activations, (1 - self.sparsity) * 100)
             sparse_kc = np.where(kc_activations > threshold, kc_activations, 0)
 
         else:
@@ -158,9 +156,7 @@ class SparseEncoder:
 
         return sparse_kc
 
-    def _winner_take_all(
-        self, activations: np.ndarray, sparsity: float
-    ) -> np.ndarray:
+    def _winner_take_all(self, activations: np.ndarray, sparsity: float) -> np.ndarray:
         """
         Winner-take-all sparsification.
 
@@ -233,7 +229,9 @@ class SparseEncoder:
             "sparsity": float(active_mask.mean()),
             "n_active_mean": float(active_mask.sum(axis=1).mean()),
             "n_active_std": float(active_mask.sum(axis=1).std()),
-            "activation_mean": float(kc_responses[active_mask].mean()) if active_mask.any() else 0.0,
+            "activation_mean": (
+                float(kc_responses[active_mask].mean()) if active_mask.any() else 0.0
+            ),
             "activation_std": float(kc_responses[active_mask].std()) if active_mask.any() else 0.0,
         }
 
@@ -342,9 +340,7 @@ class SparseEncoder:
 
                 # Encode and add KC noise
                 kc_noisy = self.encode(orn_noisy)
-                kc_noisy = self.add_noise(
-                    kc_noisy, noise_type=noise_type, noise_level=noise_level
-                )
+                kc_noisy = self.add_noise(kc_noisy, noise_type=noise_type, noise_level=noise_level)
 
                 augmented_orn.append(orn_noisy)
                 augmented_kc.append(kc_noisy)
@@ -391,10 +387,7 @@ class SparseEncoder:
         """
         self.weights = np.load(weights_path)
         self.n_output, self.n_input = self.weights.shape
-        logger.info(
-            f"Loaded weights from {weights_path}: "
-            f"{self.n_input} → {self.n_output}"
-        )
+        logger.info(f"Loaded weights from {weights_path}: " f"{self.n_input} → {self.n_output}")
 
 
 def create_kc_like_encoding(

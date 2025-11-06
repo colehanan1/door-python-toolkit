@@ -37,6 +37,7 @@ class SingleORNAnalysis:
         pathway_counts: Counts by pathway type
         statistics: Summary statistics
     """
+
     orn_identifier: str
     is_glomerulus: bool
     pathways: List[Dict]
@@ -67,17 +68,17 @@ class SingleORNAnalysis:
     def get_targets_by_glomerulus(self) -> Dict[str, int]:
         """Count target neurons by glomerulus."""
         df = self.to_dataframe()
-        target_orns = df[df['level2_category'] == 'ORN']
+        target_orns = df[df["level2_category"] == "ORN"]
 
         if len(target_orns) == 0:
             return {}
 
-        return target_orns['level2_glomerulus'].value_counts().to_dict()
+        return target_orns["level2_glomerulus"].value_counts().to_dict()
 
     def get_strongest_pathways(self, n: int = 10) -> pd.DataFrame:
         """Get the N strongest pathways by synapse count."""
         df = self.to_dataframe()
-        return df.nlargest(n, 'synapse_count_step2')
+        return df.nlargest(n, "synapse_count_step2")
 
     def summary(self) -> str:
         """Generate summary string."""
@@ -93,18 +94,22 @@ class SingleORNAnalysis:
         for category, neurons in self.intermediate_neurons.items():
             lines.append(f"  {category}: {len(neurons)}")
 
-        lines.extend([
-            "",
-            "Target neurons:",
-        ])
+        lines.extend(
+            [
+                "",
+                "Target neurons:",
+            ]
+        )
 
         for category, neurons in self.target_neurons.items():
             lines.append(f"  {category}: {len(neurons)}")
 
-        lines.extend([
-            "",
-            "Pathway type distribution:",
-        ])
+        lines.extend(
+            [
+                "",
+                "Pathway type distribution:",
+            ]
+        )
 
         for ptype, count in self.pathway_counts.items():
             lines.append(f"  {ptype}: {count}")
@@ -112,10 +117,12 @@ class SingleORNAnalysis:
         # Top target glomeruli
         target_gloms = self.get_targets_by_glomerulus()
         if target_gloms:
-            lines.extend([
-                "",
-                "Top 5 target glomeruli:",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "Top 5 target glomeruli:",
+                ]
+            )
             for glom, count in list(target_gloms.items())[:5]:
                 lines.append(f"  {glom}: {count} pathways")
 
@@ -137,6 +144,7 @@ class ORNPairComparison:
         cross_talk_strength: Quantified cross-talk metrics
         asymmetry_metrics: Asymmetry analysis
     """
+
     orn1: str
     orn2: str
     is_glomerulus: bool
@@ -162,8 +170,8 @@ class ORNPairComparison:
 
         Returns 0 for symmetric, >0 for asymmetric (1→2 stronger), <0 for (2→1 stronger)
         """
-        strength_1_to_2 = self.cross_talk_strength['1_to_2']
-        strength_2_to_1 = self.cross_talk_strength['2_to_1']
+        strength_1_to_2 = self.cross_talk_strength["1_to_2"]
+        strength_2_to_1 = self.cross_talk_strength["2_to_1"]
 
         if strength_1_to_2 + strength_2_to_1 == 0:
             return 0.0
@@ -192,21 +200,21 @@ class ORNPairComparison:
         for category, neurons in self.shared_intermediates.items():
             lines.append(f"  {category}: {len(neurons)}")
 
-        lines.extend([
-            "",
-            f"Asymmetry ratio: {self.get_asymmetry_ratio():.3f}",
-            f"  (>0: {self.orn1} → {self.orn2} stronger)",
-            f"  (<0: {self.orn2} → {self.orn1} stronger)",
-        ])
+        lines.extend(
+            [
+                "",
+                f"Asymmetry ratio: {self.get_asymmetry_ratio():.3f}",
+                f"  (>0: {self.orn1} → {self.orn2} stronger)",
+                f"  (<0: {self.orn2} → {self.orn1} stronger)",
+            ]
+        )
 
         return "\n".join(lines)
 
 
 # Mode 1: Single ORN Focus
 def analyze_single_orn(
-    network: CrossTalkNetwork,
-    orn_identifier: Union[str, int],
-    by_glomerulus: bool = True
+    network: CrossTalkNetwork, orn_identifier: Union[str, int], by_glomerulus: bool = True
 ) -> SingleORNAnalysis:
     """
     Analyze all pathways from a single ORN or glomerulus.
@@ -239,57 +247,57 @@ def analyze_single_orn(
             intermediate_neurons={},
             target_neurons={},
             pathway_counts={},
-            statistics={}
+            statistics={},
         )
 
     # Organize intermediate neurons by category
-    intermediate_neurons = {'LNs': [], 'PNs': []}
-    target_neurons = {'ORNs': [], 'PNs': [], 'LNs': []}
+    intermediate_neurons = {"LNs": [], "PNs": []}
+    target_neurons = {"ORNs": [], "PNs": [], "LNs": []}
 
     for pathway in pathways:
         # Track intermediate neurons
-        if pathway['level1_category'] == 'Local_Neuron':
-            if pathway['level1_id'] not in intermediate_neurons['LNs']:
-                intermediate_neurons['LNs'].append(pathway['level1_id'])
-        elif pathway['level1_category'] == 'Projection_Neuron':
-            if pathway['level1_id'] not in intermediate_neurons['PNs']:
-                intermediate_neurons['PNs'].append(pathway['level1_id'])
+        if pathway["level1_category"] == "Local_Neuron":
+            if pathway["level1_id"] not in intermediate_neurons["LNs"]:
+                intermediate_neurons["LNs"].append(pathway["level1_id"])
+        elif pathway["level1_category"] == "Projection_Neuron":
+            if pathway["level1_id"] not in intermediate_neurons["PNs"]:
+                intermediate_neurons["PNs"].append(pathway["level1_id"])
 
         # Track target neurons
-        if pathway['level2_category'] == 'ORN':
-            if pathway['level2_id'] not in target_neurons['ORNs']:
-                target_neurons['ORNs'].append(pathway['level2_id'])
-        elif pathway['level2_category'] == 'Projection_Neuron':
-            if pathway['level2_id'] not in target_neurons['PNs']:
-                target_neurons['PNs'].append(pathway['level2_id'])
-        elif pathway['level2_category'] == 'Local_Neuron':
-            if pathway['level2_id'] not in target_neurons['LNs']:
-                target_neurons['LNs'].append(pathway['level2_id'])
+        if pathway["level2_category"] == "ORN":
+            if pathway["level2_id"] not in target_neurons["ORNs"]:
+                target_neurons["ORNs"].append(pathway["level2_id"])
+        elif pathway["level2_category"] == "Projection_Neuron":
+            if pathway["level2_id"] not in target_neurons["PNs"]:
+                target_neurons["PNs"].append(pathway["level2_id"])
+        elif pathway["level2_category"] == "Local_Neuron":
+            if pathway["level2_id"] not in target_neurons["LNs"]:
+                target_neurons["LNs"].append(pathway["level2_id"])
 
     # Count pathway types
     pathway_counts = {}
     for pathway in pathways:
-        l1_cat = pathway['level1_category']
-        l2_cat = pathway['level2_category']
+        l1_cat = pathway["level1_category"]
+        l2_cat = pathway["level2_category"]
 
-        if l1_cat == 'Local_Neuron' and l2_cat == 'ORN':
-            ptype = 'ORN→LN→ORN (lateral inhibition)'
-        elif l1_cat == 'Local_Neuron' and l2_cat == 'Projection_Neuron':
-            ptype = 'ORN→LN→PN (feedforward inhibition)'
-        elif l1_cat == 'Projection_Neuron':
-            ptype = 'ORN→PN→feedback'
+        if l1_cat == "Local_Neuron" and l2_cat == "ORN":
+            ptype = "ORN→LN→ORN (lateral inhibition)"
+        elif l1_cat == "Local_Neuron" and l2_cat == "Projection_Neuron":
+            ptype = "ORN→LN→PN (feedforward inhibition)"
+        elif l1_cat == "Projection_Neuron":
+            ptype = "ORN→PN→feedback"
         else:
-            ptype = 'Other'
+            ptype = "Other"
 
         pathway_counts[ptype] = pathway_counts.get(ptype, 0) + 1
 
     # Calculate statistics
-    synapse_counts_step2 = [p['synapse_count_step2'] for p in pathways]
+    synapse_counts_step2 = [p["synapse_count_step2"] for p in pathways]
     statistics = {
-        'mean_synapse_count': np.mean(synapse_counts_step2),
-        'median_synapse_count': np.median(synapse_counts_step2),
-        'total_synapse_count': np.sum(synapse_counts_step2),
-        'max_synapse_count': np.max(synapse_counts_step2),
+        "mean_synapse_count": np.mean(synapse_counts_step2),
+        "median_synapse_count": np.median(synapse_counts_step2),
+        "total_synapse_count": np.sum(synapse_counts_step2),
+        "max_synapse_count": np.max(synapse_counts_step2),
     }
 
     return SingleORNAnalysis(
@@ -308,7 +316,7 @@ def compare_orn_pair(
     network: CrossTalkNetwork,
     orn1: Union[str, int],
     orn2: Union[str, int],
-    by_glomerulus: bool = True
+    by_glomerulus: bool = True,
 ) -> ORNPairComparison:
     """
     Compare cross-talk between two ORNs or glomeruli.
@@ -337,38 +345,39 @@ def compare_orn_pair(
     # Find shared intermediate neurons
     intermediates_1 = set()
     for p in pathways_1_to_2:
-        intermediates_1.add((p['level1_id'], p['level1_category']))
+        intermediates_1.add((p["level1_id"], p["level1_category"]))
 
     intermediates_2 = set()
     for p in pathways_2_to_1:
-        intermediates_2.add((p['level1_id'], p['level1_category']))
+        intermediates_2.add((p["level1_id"], p["level1_category"]))
 
     shared = intermediates_1 & intermediates_2
 
-    shared_intermediates = {'LNs': [], 'PNs': []}
+    shared_intermediates = {"LNs": [], "PNs": []}
     for neuron_id, category in shared:
-        if category == 'Local_Neuron':
-            shared_intermediates['LNs'].append(neuron_id)
-        elif category == 'Projection_Neuron':
-            shared_intermediates['PNs'].append(neuron_id)
+        if category == "Local_Neuron":
+            shared_intermediates["LNs"].append(neuron_id)
+        elif category == "Projection_Neuron":
+            shared_intermediates["PNs"].append(neuron_id)
 
     # Calculate cross-talk strength (total synapses)
-    strength_1_to_2 = sum(p['synapse_count_step2'] for p in pathways_1_to_2)
-    strength_2_to_1 = sum(p['synapse_count_step2'] for p in pathways_2_to_1)
+    strength_1_to_2 = sum(p["synapse_count_step2"] for p in pathways_1_to_2)
+    strength_2_to_1 = sum(p["synapse_count_step2"] for p in pathways_2_to_1)
 
     cross_talk_strength = {
-        '1_to_2': strength_1_to_2,
-        '2_to_1': strength_2_to_1,
-        'total': strength_1_to_2 + strength_2_to_1,
-        'mean_1_to_2': strength_1_to_2 / len(pathways_1_to_2) if pathways_1_to_2 else 0,
-        'mean_2_to_1': strength_2_to_1 / len(pathways_2_to_1) if pathways_2_to_1 else 0,
+        "1_to_2": strength_1_to_2,
+        "2_to_1": strength_2_to_1,
+        "total": strength_1_to_2 + strength_2_to_1,
+        "mean_1_to_2": strength_1_to_2 / len(pathways_1_to_2) if pathways_1_to_2 else 0,
+        "mean_2_to_1": strength_2_to_1 / len(pathways_2_to_1) if pathways_2_to_1 else 0,
     }
 
     # Calculate asymmetry metrics
     asymmetry_metrics = {
-        'pathway_count_ratio': len(pathways_1_to_2) / max(len(pathways_2_to_1), 1),
-        'strength_ratio': strength_1_to_2 / max(strength_2_to_1, 1),
-        'shared_intermediate_fraction': len(shared) / max(len(intermediates_1 | intermediates_2), 1),
+        "pathway_count_ratio": len(pathways_1_to_2) / max(len(pathways_2_to_1), 1),
+        "strength_ratio": strength_1_to_2 / max(strength_2_to_1, 1),
+        "shared_intermediate_fraction": len(shared)
+        / max(len(intermediates_1 | intermediates_2), 1),
     }
 
     return ORNPairComparison(
@@ -390,7 +399,7 @@ def find_pathways(
     source: Union[str, int],
     target: Union[str, int],
     by_glomerulus: bool = False,
-    max_pathways: Optional[int] = None
+    max_pathways: Optional[int] = None,
 ) -> Dict:
     """
     Find all pathways between source and target neurons/glomeruli.
@@ -418,52 +427,48 @@ def find_pathways(
 
     if max_pathways is not None:
         # Sort by synapse strength and take top N
-        pathways = sorted(
-            pathways,
-            key=lambda p: p['synapse_count_step2'],
-            reverse=True
-        )[:max_pathways]
+        pathways = sorted(pathways, key=lambda p: p["synapse_count_step2"], reverse=True)[
+            :max_pathways
+        ]
 
     # Analyze pathways
     if not pathways:
         return {
-            'source': str(source),
-            'target': str(target),
-            'num_pathways': 0,
-            'pathways': [],
-            'intermediate_neurons': {'LNs': [], 'PNs': []},
-            'statistics': {
-                'total_pathways': 0,
-                'total_synapses': 0,
-                'mean_synapses_per_pathway': 0,
-                'median_synapses_per_pathway': 0,
-                'max_synapses': 0,
-                'min_synapses': 0,
-            }
+            "source": str(source),
+            "target": str(target),
+            "num_pathways": 0,
+            "pathways": [],
+            "intermediate_neurons": {"LNs": [], "PNs": []},
+            "statistics": {
+                "total_pathways": 0,
+                "total_synapses": 0,
+                "mean_synapses_per_pathway": 0,
+                "median_synapses_per_pathway": 0,
+                "max_synapses": 0,
+                "min_synapses": 0,
+            },
         }
 
     # Extract intermediate neurons
-    intermediate_neurons = {'LNs': set(), 'PNs': set()}
+    intermediate_neurons = {"LNs": set(), "PNs": set()}
     for pathway in pathways:
-        if pathway['level1_category'] == 'Local_Neuron':
-            intermediate_neurons['LNs'].add(pathway['level1_id'])
-        elif pathway['level1_category'] == 'Projection_Neuron':
-            intermediate_neurons['PNs'].add(pathway['level1_id'])
+        if pathway["level1_category"] == "Local_Neuron":
+            intermediate_neurons["LNs"].add(pathway["level1_id"])
+        elif pathway["level1_category"] == "Projection_Neuron":
+            intermediate_neurons["PNs"].add(pathway["level1_id"])
 
     # Convert sets to lists
-    intermediate_neurons = {
-        k: list(v) for k, v in intermediate_neurons.items()
-    }
+    intermediate_neurons = {k: list(v) for k, v in intermediate_neurons.items()}
 
     # Calculate statistics
-    synapse_counts = [p['synapse_count_step2'] for p in pathways]
+    synapse_counts = [p["synapse_count_step2"] for p in pathways]
     statistics = {
-        'total_pathways': len(pathways),
-        'total_synapses': sum(synapse_counts),
-        'mean_synapses_per_pathway': np.mean(synapse_counts),
-        'median_synapses_per_pathway': np.median(synapse_counts),
-        'max_synapses': max(synapse_counts),
-        'min_synapses': min(synapse_counts),
+        "total_pathways": len(pathways),
+        "total_synapses": sum(synapse_counts),
+        "mean_synapses_per_pathway": np.mean(synapse_counts),
+        "median_synapses_per_pathway": np.median(synapse_counts),
+        "max_synapses": max(synapse_counts),
+        "min_synapses": min(synapse_counts),
     }
 
     # Find shortest path length
@@ -473,32 +478,27 @@ def find_pathways(
         target_neurons = network.get_glomerulus_neurons(target)
         if source_neurons and target_neurons:
             shortest_paths = network.find_shortest_paths(
-                source_neurons[0],
-                target_neurons[0],
-                max_paths=1
+                source_neurons[0], target_neurons[0], max_paths=1
             )
             if shortest_paths:
-                statistics['shortest_path_length'] = len(shortest_paths[0]) - 1
+                statistics["shortest_path_length"] = len(shortest_paths[0]) - 1
     else:
         shortest_paths = network.find_shortest_paths(source, target, max_paths=1)
         if shortest_paths:
-            statistics['shortest_path_length'] = len(shortest_paths[0]) - 1
+            statistics["shortest_path_length"] = len(shortest_paths[0]) - 1
 
     return {
-        'source': str(source),
-        'target': str(target),
-        'by_glomerulus': by_glomerulus,
-        'num_pathways': len(pathways),
-        'pathways': pathways,
-        'intermediate_neurons': intermediate_neurons,
-        'statistics': statistics,
+        "source": str(source),
+        "target": str(target),
+        "by_glomerulus": by_glomerulus,
+        "num_pathways": len(pathways),
+        "pathways": pathways,
+        "intermediate_neurons": intermediate_neurons,
+        "statistics": statistics,
     }
 
 
-def export_pathways_to_csv(
-    pathways: List[Dict],
-    filepath: Union[str, Path]
-) -> None:
+def export_pathways_to_csv(pathways: List[Dict], filepath: Union[str, Path]) -> None:
     """
     Export pathway list to CSV file.
 

@@ -47,9 +47,9 @@ class NetworkStatistics:
 
     def detect_hub_neurons(
         self,
-        method: str = 'degree',
+        method: str = "degree",
         threshold_percentile: float = 90.0,
-        neuron_category: Optional[str] = None
+        neuron_category: Optional[str] = None,
     ) -> List[Tuple[str, float]]:
         """
         Identify hub neurons with high connectivity.
@@ -72,15 +72,12 @@ class NetworkStatistics:
         # Filter nodes
         if neuron_category:
             nodes = [
-                n for n, d in self.graph.nodes(data=True)
-                if d.get('category') == neuron_category
-                and d.get('node_type') == 'neuron'
+                n
+                for n, d in self.graph.nodes(data=True)
+                if d.get("category") == neuron_category and d.get("node_type") == "neuron"
             ]
         else:
-            nodes = [
-                n for n, d in self.graph.nodes(data=True)
-                if d.get('node_type') == 'neuron'
-            ]
+            nodes = [n for n, d in self.graph.nodes(data=True) if d.get("node_type") == "neuron"]
 
         if not nodes:
             return []
@@ -89,13 +86,13 @@ class NetworkStatistics:
         subgraph = self.graph.subgraph(nodes).copy()
 
         # Calculate centrality
-        if method == 'degree':
+        if method == "degree":
             centrality = dict(subgraph.degree())
-        elif method == 'betweenness':
+        elif method == "betweenness":
             centrality = nx.betweenness_centrality(subgraph)
-        elif method == 'closeness':
+        elif method == "closeness":
             centrality = nx.closeness_centrality(subgraph)
-        elif method == 'eigenvector':
+        elif method == "eigenvector":
             try:
                 centrality = nx.eigenvector_centrality(subgraph, max_iter=1000)
             except nx.PowerIterationFailedConvergence:
@@ -109,11 +106,7 @@ class NetworkStatistics:
         threshold = np.percentile(scores, threshold_percentile)
 
         # Filter and sort
-        hubs = [
-            (node, score)
-            for node, score in centrality.items()
-            if score >= threshold
-        ]
+        hubs = [(node, score) for node, score in centrality.items() if score >= threshold]
         hubs.sort(key=lambda x: x[1], reverse=True)
 
         logger.info(f"Found {len(hubs)} hub neurons (threshold: {threshold:.4f})")
@@ -121,9 +114,7 @@ class NetworkStatistics:
         return hubs
 
     def detect_communities(
-        self,
-        algorithm: str = 'louvain',
-        level: str = 'glomerulus'
+        self, algorithm: str = "louvain", level: str = "glomerulus"
     ) -> Dict[str, int]:
         """
         Detect communities (functional clusters) in the network.
@@ -143,7 +134,7 @@ class NetworkStatistics:
         logger.info(f"Detecting communities using {algorithm}...")
 
         # Choose graph level
-        if level == 'glomerulus':
+        if level == "glomerulus":
             G = self.glomerulus_graph
         else:
             G = self.graph
@@ -152,16 +143,17 @@ class NetworkStatistics:
         G_undirected = G.to_undirected()
 
         # Detect communities
-        if algorithm == 'louvain':
+        if algorithm == "louvain":
             try:
                 import community as community_louvain
+
                 communities = community_louvain.best_partition(G_undirected)
             except ImportError:
                 logger.warning("python-louvain not available, using greedy modularity")
                 communities = self._greedy_modularity(G_undirected)
-        elif algorithm == 'greedy':
+        elif algorithm == "greedy":
             communities = self._greedy_modularity(G_undirected)
-        elif algorithm == 'label_propagation':
+        elif algorithm == "label_propagation":
             communities_gen = nx.community.label_propagation_communities(G_undirected)
             communities = {}
             for i, comm in enumerate(communities_gen):
@@ -219,26 +211,29 @@ class NetworkStatistics:
                 )
 
                 # Calculate strengths
-                strength_forward = sum(p['synapse_count_step2'] for p in pathways_forward)
-                strength_reverse = sum(p['synapse_count_step2'] for p in pathways_reverse)
+                strength_forward = sum(p["synapse_count_step2"] for p in pathways_forward)
+                strength_reverse = sum(p["synapse_count_step2"] for p in pathways_reverse)
 
                 if strength_forward + strength_reverse == 0:
                     continue
 
                 # Asymmetry ratio: -1 (reverse stronger) to +1 (forward stronger)
-                asymmetry = (strength_forward - strength_reverse) / \
-                           (strength_forward + strength_reverse)
+                asymmetry = (strength_forward - strength_reverse) / (
+                    strength_forward + strength_reverse
+                )
 
-                results.append({
-                    'source_glomerulus': source_glom,
-                    'target_glomerulus': target_glom,
-                    'strength_forward': strength_forward,
-                    'strength_reverse': strength_reverse,
-                    'total_strength': strength_forward + strength_reverse,
-                    'asymmetry_ratio': asymmetry,
-                    'num_pathways_forward': len(pathways_forward),
-                    'num_pathways_reverse': len(pathways_reverse),
-                })
+                results.append(
+                    {
+                        "source_glomerulus": source_glom,
+                        "target_glomerulus": target_glom,
+                        "strength_forward": strength_forward,
+                        "strength_reverse": strength_reverse,
+                        "total_strength": strength_forward + strength_reverse,
+                        "asymmetry_ratio": asymmetry,
+                        "num_pathways_forward": len(pathways_forward),
+                        "num_pathways_reverse": len(pathways_reverse),
+                    }
+                )
 
         df = pd.DataFrame(results)
         logger.info(f"Calculated asymmetry for {len(df)} glomerulus pairs")
@@ -246,9 +241,7 @@ class NetworkStatistics:
         return df
 
     def analyze_path_lengths(
-        self,
-        source_glomerulus: Optional[str] = None,
-        target_glomerulus: Optional[str] = None
+        self, source_glomerulus: Optional[str] = None, target_glomerulus: Optional[str] = None
     ) -> Dict:
         """
         Analyze path length distributions in the network.
@@ -304,26 +297,23 @@ class NetworkStatistics:
 
         if not path_lengths:
             return {
-                'mean_path_length': 0,
-                'median_path_length': 0,
-                'max_path_length': 0,
-                'num_paths': 0,
+                "mean_path_length": 0,
+                "median_path_length": 0,
+                "max_path_length": 0,
+                "num_paths": 0,
             }
 
         return {
-            'mean_path_length': np.mean(path_lengths),
-            'median_path_length': np.median(path_lengths),
-            'max_path_length': np.max(path_lengths),
-            'min_path_length': np.min(path_lengths),
-            'std_path_length': np.std(path_lengths),
-            'num_paths': len(path_lengths),
-            'path_length_distribution': Counter(path_lengths),
+            "mean_path_length": np.mean(path_lengths),
+            "median_path_length": np.median(path_lengths),
+            "max_path_length": np.max(path_lengths),
+            "min_path_length": np.min(path_lengths),
+            "std_path_length": np.std(path_lengths),
+            "num_paths": len(path_lengths),
+            "path_length_distribution": Counter(path_lengths),
         }
 
-    def calculate_clustering_coefficients(
-        self,
-        level: str = 'glomerulus'
-    ) -> Dict[str, float]:
+    def calculate_clustering_coefficients(self, level: str = "glomerulus") -> Dict[str, float]:
         """
         Calculate clustering coefficients for nodes.
 
@@ -340,7 +330,7 @@ class NetworkStatistics:
         """
         logger.info(f"Calculating clustering coefficients at {level} level...")
 
-        if level == 'glomerulus':
+        if level == "glomerulus":
             G = self.glomerulus_graph.to_undirected()
         else:
             G = self.graph.to_undirected()
@@ -349,10 +339,7 @@ class NetworkStatistics:
 
         return clustering
 
-    def find_network_motifs(
-        self,
-        motif_size: int = 3
-    ) -> Counter:
+    def find_network_motifs(self, motif_size: int = 3) -> Counter:
         """
         Find common network motifs (small subgraph patterns).
 
@@ -406,11 +393,7 @@ class NetworkStatistics:
             >>> report = stats.generate_full_report()
             >>> print(report)
         """
-        lines = [
-            "Network Statistical Analysis Report",
-            "=" * 70,
-            ""
-        ]
+        lines = ["Network Statistical Analysis Report", "=" * 70, ""]
 
         # Basic statistics
         basic_stats = self.network.get_network_statistics()
@@ -421,16 +404,16 @@ class NetworkStatistics:
         lines.append("")
 
         # Hub neurons
-        hubs_degree = self.detect_hub_neurons(method='degree', threshold_percentile=95)
+        hubs_degree = self.detect_hub_neurons(method="degree", threshold_percentile=95)
         lines.append(f"Hub Neurons (top 5% by degree):")
         for i, (node, degree) in enumerate(hubs_degree[:10]):
             node_info = self.graph.nodes[node]
-            cell_type = node_info.get('type', 'Unknown')
+            cell_type = node_info.get("type", "Unknown")
             lines.append(f"  {i+1}. {cell_type} (degree: {degree})")
         lines.append("")
 
         # Communities
-        communities = self.detect_communities(level='glomerulus')
+        communities = self.detect_communities(level="glomerulus")
         num_communities = max(communities.values()) + 1
         lines.append(f"Community Detection (glomerulus level):")
         lines.append(f"  Number of communities: {num_communities}")
@@ -451,7 +434,7 @@ class NetworkStatistics:
         lines.append("")
 
         # Clustering
-        clustering = self.calculate_clustering_coefficients('glomerulus')
+        clustering = self.calculate_clustering_coefficients("glomerulus")
         if clustering:
             avg_clustering = np.mean(list(clustering.values()))
             lines.append("Clustering Coefficients (glomerulus level):")
@@ -466,7 +449,7 @@ class NetworkStatistics:
             lines.append(f"  Std asymmetry ratio: {asym_matrix['asymmetry_ratio'].std():.3f}")
 
             # Most asymmetric pairs
-            most_asym = asym_matrix.nlargest(5, 'asymmetry_ratio')
+            most_asym = asym_matrix.nlargest(5, "asymmetry_ratio")
             lines.append("  Most asymmetric connections (forward >> reverse):")
             for _, row in most_asym.iterrows():
                 lines.append(

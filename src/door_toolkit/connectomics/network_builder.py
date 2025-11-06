@@ -52,11 +52,7 @@ class CrossTalkNetwork:
         >>> results = network.analyze_single_orn('ORN_DL5')
     """
 
-    def __init__(
-        self,
-        data: ConnectivityData,
-        config: Optional[NetworkConfig] = None
-    ):
+    def __init__(self, data: ConnectivityData, config: Optional[NetworkConfig] = None):
         """
         Initialize CrossTalkNetwork.
 
@@ -76,10 +72,8 @@ class CrossTalkNetwork:
 
     @classmethod
     def from_csv(
-        cls,
-        filepath: Union[str, Path],
-        config: Optional[NetworkConfig] = None
-    ) -> 'CrossTalkNetwork':
+        cls, filepath: Union[str, Path], config: Optional[NetworkConfig] = None
+    ) -> "CrossTalkNetwork":
         """
         Create CrossTalkNetwork from a CSV file.
 
@@ -98,10 +92,8 @@ class CrossTalkNetwork:
 
     @classmethod
     def from_multiple_files(
-        cls,
-        filepaths: Dict[str, Union[str, Path]],
-        config: Optional[NetworkConfig] = None
-    ) -> 'CrossTalkNetwork':
+        cls, filepaths: Dict[str, Union[str, Path]], config: Optional[NetworkConfig] = None
+    ) -> "CrossTalkNetwork":
         """
         Create CrossTalkNetwork from multiple pathway type files.
 
@@ -128,15 +120,11 @@ class CrossTalkNetwork:
 
         # Add all neurons as nodes with their properties
         for neuron_id, props in self.data.neurons.items():
-            self.graph.add_node(
-                neuron_id,
-                **props,
-                node_type='neuron'
-            )
+            self.graph.add_node(neuron_id, **props, node_type="neuron")
 
             # Track ORN-to-glomerulus mapping
-            if props['category'] == 'ORN' and 'glomerulus' in props:
-                glom = props['glomerulus']
+            if props["category"] == "ORN" and "glomerulus" in props:
+                glom = props["glomerulus"]
                 self._neuron_to_glomerulus[neuron_id] = glom
                 self._glomerulus_to_neurons[glom].append(neuron_id)
 
@@ -145,33 +133,35 @@ class CrossTalkNetwork:
             self.graph.add_node(
                 f"GLOM_{glomerulus}",
                 glomerulus=glomerulus,
-                node_type='glomerulus_meta',
-                category='Glomerulus',
-                num_neurons=len(self._glomerulus_to_neurons[glomerulus])
+                node_type="glomerulus_meta",
+                category="Glomerulus",
+                num_neurons=len(self._glomerulus_to_neurons[glomerulus]),
             )
 
         # Add edges from pathways
         for _, pathway in self.data.pathways.iterrows():
             # ORN → Level1 connection
             self.graph.add_edge(
-                pathway['orn_root_id'],
-                pathway['level1_root_id'],
-                weight=pathway['synapse_count_step1'],
-                synapse_count=pathway['synapse_count_step1'],
+                pathway["orn_root_id"],
+                pathway["level1_root_id"],
+                weight=pathway["synapse_count_step1"],
+                synapse_count=pathway["synapse_count_step1"],
                 pathway_step=1,
             )
 
             # Level1 → Level2 connection
             self.graph.add_edge(
-                pathway['level1_root_id'],
-                pathway['level2_root_id'],
-                weight=pathway['synapse_count_step2'],
-                synapse_count=pathway['synapse_count_step2'],
+                pathway["level1_root_id"],
+                pathway["level2_root_id"],
+                weight=pathway["synapse_count_step2"],
+                synapse_count=pathway["synapse_count_step2"],
                 pathway_step=2,
             )
 
-        logger.info(f"Built graph with {self.graph.number_of_nodes()} nodes "
-                   f"and {self.graph.number_of_edges()} edges")
+        logger.info(
+            f"Built graph with {self.graph.number_of_nodes()} nodes "
+            f"and {self.graph.number_of_edges()} edges"
+        )
 
         # Build glomerulus-level graph
         self._build_glomerulus_graph()
@@ -184,38 +174,31 @@ class CrossTalkNetwork:
 
         # Add glomerulus nodes
         for glom in self.data.glomeruli:
-            self.glomerulus_graph.add_node(
-                glom,
-                num_neurons=len(self._glomerulus_to_neurons[glom])
-            )
+            self.glomerulus_graph.add_node(glom, num_neurons=len(self._glomerulus_to_neurons[glom]))
 
         # Aggregate connections at glomerulus level
         glom_connections = defaultdict(int)
 
         for _, pathway in self.data.pathways.iterrows():
-            source_glom = pathway['orn_glomerulus']
+            source_glom = pathway["orn_glomerulus"]
 
             # Determine target glomerulus
-            target_id = pathway['level2_root_id']
+            target_id = pathway["level2_root_id"]
             target_glom = self._neuron_to_glomerulus.get(target_id)
 
             if target_glom is not None and target_glom != source_glom:
                 # ORN→LN→ORN pathway
-                glom_connections[(source_glom, target_glom)] += \
-                    pathway['synapse_count_step2']
+                glom_connections[(source_glom, target_glom)] += pathway["synapse_count_step2"]
 
         # Add edges
         for (source, target), weight in glom_connections.items():
-            self.glomerulus_graph.add_edge(
-                source,
-                target,
-                weight=weight,
-                synapse_count=weight
-            )
+            self.glomerulus_graph.add_edge(source, target, weight=weight, synapse_count=weight)
 
-        logger.info(f"Built glomerulus graph with "
-                   f"{self.glomerulus_graph.number_of_nodes()} nodes and "
-                   f"{self.glomerulus_graph.number_of_edges()} edges")
+        logger.info(
+            f"Built glomerulus graph with "
+            f"{self.glomerulus_graph.number_of_nodes()} nodes and "
+            f"{self.glomerulus_graph.number_of_edges()} edges"
+        )
 
     def set_min_synapse_threshold(self, threshold: int) -> None:
         """
@@ -269,9 +252,7 @@ class CrossTalkNetwork:
         return self._neuron_to_glomerulus.get(neuron_id)
 
     def get_pathways_from_orn(
-        self,
-        orn_identifier: Union[str, int],
-        by_glomerulus: bool = False
+        self, orn_identifier: Union[str, int], by_glomerulus: bool = False
     ) -> List[Dict]:
         """
         Get all pathways originating from a specific ORN or glomerulus.
@@ -308,27 +289,24 @@ class CrossTalkNetwork:
                     step2_data = self.graph[level1_id][level2_id]
 
                     pathway = {
-                        'orn_id': orn_id,
-                        'orn_glomerulus': self.get_neuron_glomerulus(orn_id),
-                        'level1_id': level1_id,
-                        'level1_type': self.graph.nodes[level1_id]['type'],
-                        'level1_category': self.graph.nodes[level1_id]['category'],
-                        'level2_id': level2_id,
-                        'level2_type': self.graph.nodes[level2_id]['type'],
-                        'level2_category': self.graph.nodes[level2_id]['category'],
-                        'level2_glomerulus': self.get_neuron_glomerulus(level2_id),
-                        'synapse_count_step1': step1_data['synapse_count'],
-                        'synapse_count_step2': step2_data['synapse_count'],
+                        "orn_id": orn_id,
+                        "orn_glomerulus": self.get_neuron_glomerulus(orn_id),
+                        "level1_id": level1_id,
+                        "level1_type": self.graph.nodes[level1_id]["type"],
+                        "level1_category": self.graph.nodes[level1_id]["category"],
+                        "level2_id": level2_id,
+                        "level2_type": self.graph.nodes[level2_id]["type"],
+                        "level2_category": self.graph.nodes[level2_id]["category"],
+                        "level2_glomerulus": self.get_neuron_glomerulus(level2_id),
+                        "synapse_count_step1": step1_data["synapse_count"],
+                        "synapse_count_step2": step2_data["synapse_count"],
                     }
                     pathways.append(pathway)
 
         return pathways
 
     def get_pathways_between_orns(
-        self,
-        source_orn: str,
-        target_orn: str,
-        by_glomerulus: bool = False
+        self, source_orn: str, target_orn: str, by_glomerulus: bool = False
     ) -> List[Dict]:
         """
         Find all pathways between two ORNs/glomeruli.
@@ -349,19 +327,11 @@ class CrossTalkNetwork:
             target_ids = {target_orn}
 
         # Filter for pathways ending at target
-        matching_pathways = [
-            p for p in all_pathways
-            if p['level2_id'] in target_ids
-        ]
+        matching_pathways = [p for p in all_pathways if p["level2_id"] in target_ids]
 
         return matching_pathways
 
-    def find_shortest_paths(
-        self,
-        source: str,
-        target: str,
-        max_paths: int = 10
-    ) -> List[List[str]]:
+    def find_shortest_paths(self, source: str, target: str, max_paths: int = 10) -> List[List[str]]:
         """
         Find shortest paths between two neurons.
 
@@ -375,20 +345,13 @@ class CrossTalkNetwork:
         """
         try:
             # Find all shortest paths
-            paths = list(nx.all_shortest_paths(
-                self.graph,
-                source,
-                target
-            ))
+            paths = list(nx.all_shortest_paths(self.graph, source, target))
             return paths[:max_paths]
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return []
 
     def get_hub_neurons(
-        self,
-        neuron_category: Optional[str] = None,
-        top_n: int = 10,
-        by_degree: str = 'out'
+        self, neuron_category: Optional[str] = None, top_n: int = 10, by_degree: str = "out"
     ) -> List[Tuple[str, int]]:
         """
         Identify hub neurons with highest connectivity.
@@ -402,23 +365,20 @@ class CrossTalkNetwork:
             List of (neuron_id, degree) tuples
         """
         degree_func = {
-            'in': self.graph.in_degree,
-            'out': self.graph.out_degree,
-            'total': self.graph.degree,
+            "in": self.graph.in_degree,
+            "out": self.graph.out_degree,
+            "total": self.graph.degree,
         }[by_degree]
 
         # Filter nodes by category if specified
         if neuron_category:
             nodes = [
-                n for n, d in self.graph.nodes(data=True)
-                if d.get('category') == neuron_category
-                and d.get('node_type') == 'neuron'
+                n
+                for n, d in self.graph.nodes(data=True)
+                if d.get("category") == neuron_category and d.get("node_type") == "neuron"
             ]
         else:
-            nodes = [
-                n for n, d in self.graph.nodes(data=True)
-                if d.get('node_type') == 'neuron'
-            ]
+            nodes = [n for n, d in self.graph.nodes(data=True) if d.get("node_type") == "neuron"]
 
         # Calculate degrees
         degrees = [(n, degree_func(n)) for n in nodes]
@@ -428,9 +388,7 @@ class CrossTalkNetwork:
         return degrees[:top_n]
 
     def get_intermediate_neurons(
-        self,
-        source_glomerulus: str,
-        target_glomerulus: str
+        self, source_glomerulus: str, target_glomerulus: str
     ) -> Dict[str, List[str]]:
         """
         Find all intermediate neurons (LNs/PNs) connecting two glomeruli.
@@ -443,20 +401,18 @@ class CrossTalkNetwork:
             Dictionary with 'LNs' and 'PNs' keys, each containing list of neuron IDs
         """
         pathways = self.get_pathways_between_orns(
-            source_glomerulus,
-            target_glomerulus,
-            by_glomerulus=True
+            source_glomerulus, target_glomerulus, by_glomerulus=True
         )
 
-        intermediates = {'LNs': [], 'PNs': []}
+        intermediates = {"LNs": [], "PNs": []}
 
         for pathway in pathways:
-            if pathway['level1_category'] == 'Local_Neuron':
-                if pathway['level1_id'] not in intermediates['LNs']:
-                    intermediates['LNs'].append(pathway['level1_id'])
-            elif pathway['level1_category'] == 'Projection_Neuron':
-                if pathway['level1_id'] not in intermediates['PNs']:
-                    intermediates['PNs'].append(pathway['level1_id'])
+            if pathway["level1_category"] == "Local_Neuron":
+                if pathway["level1_id"] not in intermediates["LNs"]:
+                    intermediates["LNs"].append(pathway["level1_id"])
+            elif pathway["level1_category"] == "Projection_Neuron":
+                if pathway["level1_id"] not in intermediates["PNs"]:
+                    intermediates["PNs"].append(pathway["level1_id"])
 
         return intermediates
 
@@ -469,50 +425,47 @@ class CrossTalkNetwork:
         """
         # Basic statistics
         stats = {
-            'num_nodes': self.graph.number_of_nodes(),
-            'num_edges': self.graph.number_of_edges(),
-            'num_glomeruli': len(self.data.glomeruli),
-            'num_pathways': self.data.num_pathways,
+            "num_nodes": self.graph.number_of_nodes(),
+            "num_edges": self.graph.number_of_edges(),
+            "num_glomeruli": len(self.data.glomeruli),
+            "num_pathways": self.data.num_pathways,
         }
 
         # Count by category
         category_counts = defaultdict(int)
         for _, data in self.graph.nodes(data=True):
-            if data.get('node_type') == 'neuron':
-                category_counts[data['category']] += 1
-        stats['neurons_by_category'] = dict(category_counts)
+            if data.get("node_type") == "neuron":
+                category_counts[data["category"]] += 1
+        stats["neurons_by_category"] = dict(category_counts)
 
         # Connectivity statistics
-        neuron_nodes = [
-            n for n, d in self.graph.nodes(data=True)
-            if d.get('node_type') == 'neuron'
-        ]
+        neuron_nodes = [n for n, d in self.graph.nodes(data=True) if d.get("node_type") == "neuron"]
 
         in_degrees = [self.graph.in_degree(n) for n in neuron_nodes]
         out_degrees = [self.graph.out_degree(n) for n in neuron_nodes]
 
-        stats['connectivity'] = {
-            'mean_in_degree': np.mean(in_degrees),
-            'mean_out_degree': np.mean(out_degrees),
-            'max_in_degree': np.max(in_degrees),
-            'max_out_degree': np.max(out_degrees),
+        stats["connectivity"] = {
+            "mean_in_degree": np.mean(in_degrees),
+            "mean_out_degree": np.mean(out_degrees),
+            "max_in_degree": np.max(in_degrees),
+            "max_out_degree": np.max(out_degrees),
         }
 
         # Synapse weight statistics
-        edge_weights = [d['weight'] for _, _, d in self.graph.edges(data=True)]
-        stats['synapse_weights'] = {
-            'mean': np.mean(edge_weights),
-            'median': np.median(edge_weights),
-            'std': np.std(edge_weights),
-            'min': np.min(edge_weights),
-            'max': np.max(edge_weights),
+        edge_weights = [d["weight"] for _, _, d in self.graph.edges(data=True)]
+        stats["synapse_weights"] = {
+            "mean": np.mean(edge_weights),
+            "median": np.median(edge_weights),
+            "std": np.std(edge_weights),
+            "min": np.min(edge_weights),
+            "max": np.max(edge_weights),
         }
 
         # Glomerulus graph statistics
         if self.glomerulus_graph:
-            stats['glomerulus_graph'] = {
-                'num_connections': self.glomerulus_graph.number_of_edges(),
-                'density': nx.density(self.glomerulus_graph),
+            stats["glomerulus_graph"] = {
+                "num_connections": self.glomerulus_graph.number_of_edges(),
+                "density": nx.density(self.glomerulus_graph),
             }
 
         return stats
@@ -577,29 +530,33 @@ class CrossTalkNetwork:
             "Neurons by category:",
         ]
 
-        for category, count in stats['neurons_by_category'].items():
+        for category, count in stats["neurons_by_category"].items():
             lines.append(f"  {category}: {count:,}")
 
-        lines.extend([
-            "",
-            "Connectivity:",
-            f"  Mean in-degree: {stats['connectivity']['mean_in_degree']:.2f}",
-            f"  Mean out-degree: {stats['connectivity']['mean_out_degree']:.2f}",
-            f"  Max in-degree: {stats['connectivity']['max_in_degree']}",
-            f"  Max out-degree: {stats['connectivity']['max_out_degree']}",
-            "",
-            "Synapse weights:",
-            f"  Mean: {stats['synapse_weights']['mean']:.2f}",
-            f"  Median: {stats['synapse_weights']['median']:.0f}",
-            f"  Range: {stats['synapse_weights']['min']} - {stats['synapse_weights']['max']}",
-        ])
-
-        if 'glomerulus_graph' in stats:
-            lines.extend([
+        lines.extend(
+            [
                 "",
-                "Glomerulus-level network:",
-                f"  Connections: {stats['glomerulus_graph']['num_connections']}",
-                f"  Density: {stats['glomerulus_graph']['density']:.4f}",
-            ])
+                "Connectivity:",
+                f"  Mean in-degree: {stats['connectivity']['mean_in_degree']:.2f}",
+                f"  Mean out-degree: {stats['connectivity']['mean_out_degree']:.2f}",
+                f"  Max in-degree: {stats['connectivity']['max_in_degree']}",
+                f"  Max out-degree: {stats['connectivity']['max_out_degree']}",
+                "",
+                "Synapse weights:",
+                f"  Mean: {stats['synapse_weights']['mean']:.2f}",
+                f"  Median: {stats['synapse_weights']['median']:.0f}",
+                f"  Range: {stats['synapse_weights']['min']} - {stats['synapse_weights']['max']}",
+            ]
+        )
+
+        if "glomerulus_graph" in stats:
+            lines.extend(
+                [
+                    "",
+                    "Glomerulus-level network:",
+                    f"  Connections: {stats['glomerulus_graph']['num_connections']}",
+                    f"  Density: {stats['glomerulus_graph']['density']:.4f}",
+                ]
+            )
 
         return "\n".join(lines)

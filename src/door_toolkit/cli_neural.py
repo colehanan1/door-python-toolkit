@@ -169,9 +169,7 @@ Examples:
         # Create sparse encoding
         if args.sparse_encode:
             logger.info(f"Creating sparse encoding (sparsity={args.sparsity})")
-            sparse_data = preprocessor.create_sparse_encoding(
-                sparsity_level=args.sparsity
-            )
+            sparse_data = preprocessor.create_sparse_encoding(sparsity_level=args.sparsity)
 
             print(f"\nSparse Encoding Results:")
             print(f"Shape: {sparse_data.shape}")
@@ -197,9 +195,7 @@ Examples:
 
         # Generate augmented dataset
         if args.augment:
-            logger.info(
-                f"Generating augmented dataset ({args.n_augmentations}x augmentation)"
-            )
+            logger.info(f"Generating augmented dataset ({args.n_augmentations}x augmentation)")
             aug_orn, aug_kc, labels = preprocessor.generate_noise_augmented_responses(
                 n_augmentations=args.n_augmentations,
                 noise_level=args.noise_level,
@@ -289,7 +285,9 @@ Examples:
             print(f"\nTrain/Validation Split:")
             print(f"Training samples: {len(train_odorants)}")
             print(f"Validation samples: {len(val_odorants)}")
-            print(f"Split ratio: {len(train_odorants) / (len(train_odorants) + len(val_odorants)):.2%} train")
+            print(
+                f"Split ratio: {len(train_odorants) / (len(train_odorants) + len(val_odorants)):.2%} train"
+            )
 
             # Show sample odorants
             print(f"\nSample training odorants:")

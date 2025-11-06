@@ -188,9 +188,7 @@ Examples:
         # Trace custom pathway
         if args.custom_pathway:
             if not all([args.receptors, args.odorants, args.behavior]):
-                parser.error(
-                    "--custom-pathway requires --receptors, --odorants, and --behavior"
-                )
+                parser.error("--custom-pathway requires --receptors, --odorants, and --behavior")
 
             logger.info("Tracing custom pathway")
             pathway = analyzer.trace_custom_pathway(
@@ -219,9 +217,7 @@ Examples:
             importance = analyzer.compute_shapley_importance(args.shapley)
 
             print(f"\nShapley Importance Scores ({args.shapley}):")
-            sorted_importance = sorted(
-                importance.items(), key=lambda x: x[1], reverse=True
-            )
+            sorted_importance = sorted(importance.items(), key=lambda x: x[1], reverse=True)
             for receptor, score in sorted_importance[:20]:
                 print(f"  {receptor}: {score:.4f}")
 

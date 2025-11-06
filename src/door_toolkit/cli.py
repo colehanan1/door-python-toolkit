@@ -217,7 +217,9 @@ Examples:
                             meta.loc[inchikey]["Name"] if inchikey in meta.index else inchikey
                         )
                         print(f"  {str(odor_name)[:37]:37} {value:0.4f}")
-                        csv_rows.append({"odorant": f"bottom-{str(odor_name)}", "response": f"{value:0.4f}"})
+                        csv_rows.append(
+                            {"odorant": f"bottom-{str(odor_name)}", "response": f"{value:0.4f}"}
+                        )
                 if args.save:
                     output_path = build_csv_path(args.save, f"{receptor_name}")
                     write_csv(output_path, csv_rows)
@@ -268,7 +270,9 @@ Examples:
             for inchikey, value in tail_series.items():
                 odor_name = meta.loc[inchikey]["Name"] if inchikey in meta.index else inchikey
                 print(f"  {str(odor_name)[:37]:37} {value:0.4f}")
-                csv_rows.append({"odorant": f"bottom-{str(odor_name)}", "response": f"{value:0.4f}"})
+                csv_rows.append(
+                    {"odorant": f"bottom-{str(odor_name)}", "response": f"{value:0.4f}"}
+                )
         if args.save:
             output_path = build_csv_path(args.save, receptor_name)
             write_csv(output_path, csv_rows)

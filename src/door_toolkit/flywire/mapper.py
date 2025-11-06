@@ -61,8 +61,7 @@ class SpatialMap:
             "odorant_name": self.odorant_name,
             "receptor_activations": self.receptor_activations,
             "spatial_points": [
-                {"x": x, "y": y, "z": z, "intensity": i}
-                for x, y, z, i in self.spatial_points
+                {"x": x, "y": y, "z": z, "intensity": i} for x, y, z, i in self.spatial_points
             ],
             "total_cells": self.total_cells,
         }
@@ -297,9 +296,7 @@ class FlyWireMapper:
                 for cell in cells:
                     if "position" in cell:
                         pos = cell["position"]
-                        spatial_points.append(
-                            (pos["x"], pos["y"], pos["z"], response)
-                        )
+                        spatial_points.append((pos["x"], pos["y"], pos["z"], response))
                         total_cells += 1
 
         spatial_map = SpatialMap(
@@ -317,9 +314,7 @@ class FlyWireMapper:
 
         return spatial_map
 
-    def export_mapping(
-        self, output_path: str, format: str = "json"
-    ) -> None:
+    def export_mapping(self, output_path: str, format: str = "json") -> None:
         """
         Export receptor mappings to file.
 
@@ -342,14 +337,11 @@ class FlyWireMapper:
         if format.lower() == "json":
             export_data = {
                 "mappings": {
-                    name: mapping.to_dict()
-                    for name, mapping in self.receptor_mappings.items()
+                    name: mapping.to_dict() for name, mapping in self.receptor_mappings.items()
                 },
                 "summary": {
                     "total_receptors": len(self.receptor_mappings),
-                    "total_cells": sum(
-                        m.cell_count for m in self.receptor_mappings.values()
-                    ),
+                    "total_cells": sum(m.cell_count for m in self.receptor_mappings.values()),
                 },
             }
 

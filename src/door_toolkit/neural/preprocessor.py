@@ -210,8 +210,7 @@ class DoORNeuralPreprocessor:
             aug_labels.extend([odorant] * (n_augmentations + 1))
 
         logger.info(
-            f"Generated {len(aug_orn)} augmented samples from "
-            f"{len(valid_odorants)} odorants"
+            f"Generated {len(aug_orn)} augmented samples from " f"{len(valid_odorants)} odorants"
         )
 
         return aug_orn, aug_kc, aug_labels
@@ -273,19 +272,13 @@ class DoORNeuralPreprocessor:
 
         # Export based on format
         if format == "pytorch":
-            self._export_pytorch(
-                output_dir, orn_responses, kc_responses, valid_odorants
-            )
+            self._export_pytorch(output_dir, orn_responses, kc_responses, valid_odorants)
 
         elif format == "numpy":
-            self._export_numpy(
-                output_dir, orn_responses, kc_responses, valid_odorants
-            )
+            self._export_numpy(output_dir, orn_responses, kc_responses, valid_odorants)
 
         elif format == "h5":
-            self._export_h5(
-                output_dir, orn_responses, kc_responses, valid_odorants
-            )
+            self._export_h5(output_dir, orn_responses, kc_responses, valid_odorants)
 
         else:
             raise ValueError(f"Unknown format: {format}")
@@ -308,17 +301,16 @@ class DoORNeuralPreprocessor:
             import torch
         except ImportError:
             raise ImportError(
-                "PyTorch required for pytorch export. "
-                "Install with: pip install torch"
+                "PyTorch required for pytorch export. " "Install with: pip install torch"
             )
 
         # Save as PyTorch tensors
         torch.save(
             {
                 "orn_responses": torch.from_numpy(orn_responses).float(),
-                "kc_responses": torch.from_numpy(kc_responses).float()
-                if kc_responses is not None
-                else None,
+                "kc_responses": (
+                    torch.from_numpy(kc_responses).float() if kc_responses is not None else None
+                ),
                 "odorants": odorants,
                 "receptor_names": self.encoder.receptor_names,
                 "n_receptors": len(self.encoder.receptor_names),
@@ -363,9 +355,7 @@ class DoORNeuralPreprocessor:
         try:
             import h5py
         except ImportError:
-            raise ImportError(
-                "h5py required for HDF5 export. Install with: pip install h5py"
-            )
+            raise ImportError("h5py required for HDF5 export. Install with: pip install h5py")
 
         with h5py.File(output_dir / "pgcn_dataset.h5", "w") as f:
             f.create_dataset("orn_responses", data=orn_responses)
@@ -376,9 +366,7 @@ class DoORNeuralPreprocessor:
             # Store strings as fixed-length
             dt = h5py.special_dtype(vlen=str)
             f.create_dataset("odorants", data=odorants, dtype=dt)
-            f.create_dataset(
-                "receptors", data=self.encoder.receptor_names, dtype=dt
-            )
+            f.create_dataset("receptors", data=self.encoder.receptor_names, dtype=dt)
 
         logger.debug(f"Exported HDF5 dataset: {output_dir / 'pgcn_dataset.h5'}")
 
@@ -432,8 +420,7 @@ class DoORNeuralPreprocessor:
         val_odorants = odorants[val_indices].tolist()
 
         logger.info(
-            f"Created train/val split: {len(train_odorants)} train, "
-            f"{len(val_odorants)} val"
+            f"Created train/val split: {len(train_odorants)} train, " f"{len(val_odorants)} val"
         )
 
         return train_odorants, val_odorants

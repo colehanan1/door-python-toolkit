@@ -35,9 +35,7 @@ class CellLabel:
     @property
     def coordinates(self) -> Optional[Tuple[float, float, float]]:
         """Get 3D coordinates if available."""
-        if all(
-            v is not None for v in [self.position_x, self.position_y, self.position_z]
-        ):
+        if all(v is not None for v in [self.position_x, self.position_y, self.position_z]):
             return (self.position_x, self.position_y, self.position_z)
         return None
 
@@ -89,9 +87,7 @@ class CommunityLabelsParser:
         self.n_labels: int = 0
         self._index_cache: Dict[str, pd.DataFrame] = {}
 
-    def parse(
-        self, chunk_size: int = 10000, show_progress: bool = True
-    ) -> pd.DataFrame:
+    def parse(self, chunk_size: int = 10000, show_progress: bool = True) -> pd.DataFrame:
         """
         Parse community labels file with progress tracking.
 
@@ -130,12 +126,8 @@ class CommunityLabelsParser:
 
         # Parse CSV with pandas
         chunks = []
-        with tqdm(
-            total=total_lines, desc="Parsing labels", disable=not show_progress
-        ) as pbar:
-            for chunk in pd.read_csv(
-                self.labels_path, chunksize=chunk_size, low_memory=False
-            ):
+        with tqdm(total=total_lines, desc="Parsing labels", disable=not show_progress) as pbar:
+            for chunk in pd.read_csv(self.labels_path, chunksize=chunk_size, low_memory=False):
                 chunks.append(chunk)
                 if show_progress:
                     pbar.update(len(chunk))
@@ -211,8 +203,10 @@ class CommunityLabelsParser:
                 flags = 0 if case_sensitive else re.IGNORECASE
                 regex = re.compile(pattern, flags)
 
-                mask = self.labels_df["label"].astype(str).str.contains(
-                    regex.pattern, case=case_sensitive, regex=True, na=False
+                mask = (
+                    self.labels_df["label"]
+                    .astype(str)
+                    .str.contains(regex.pattern, case=case_sensitive, regex=True, na=False)
                 )
                 matching_rows = self.labels_df[mask]
 
@@ -229,9 +223,7 @@ class CommunityLabelsParser:
 
         return results
 
-    def extract_olfactory_cells(
-        self, receptor_types: Optional[List[str]] = None
-    ) -> pd.DataFrame:
+    def extract_olfactory_cells(self, receptor_types: Optional[List[str]] = None) -> pd.DataFrame:
         """
         Extract all olfactory receptor cells from labels.
 
@@ -261,8 +253,10 @@ class CommunityLabelsParser:
                 continue
 
             pattern = self.OLFACTORY_PATTERNS[receptor_type.lower()]
-            mask = self.labels_df["label"].astype(str).str.contains(
-                pattern, case=False, regex=True, na=False
+            mask = (
+                self.labels_df["label"]
+                .astype(str)
+                .str.contains(pattern, case=False, regex=True, na=False)
             )
             matches = self.labels_df[mask].copy()
             matches["receptor_type"] = receptor_type.upper()
@@ -272,9 +266,7 @@ class CommunityLabelsParser:
             return pd.DataFrame()
 
         result = pd.concat(all_matches, ignore_index=True)
-        logger.info(
-            f"Extracted {len(result)} olfactory cells ({', '.join(receptor_types)})"
-        )
+        logger.info(f"Extracted {len(result)} olfactory cells ({', '.join(receptor_types)})")
         return result
 
     def find_by_root_id(self, root_ids: List[str]) -> List[CellLabel]:
@@ -332,8 +324,10 @@ class CommunityLabelsParser:
             if pattern_type.startswith("sensillum"):
                 continue  # Skip sensillum patterns for receptor counts
 
-            mask = self.labels_df["label"].astype(str).str.contains(
-                pattern, case=False, regex=True, na=False
+            mask = (
+                self.labels_df["label"]
+                .astype(str)
+                .str.contains(pattern, case=False, regex=True, na=False)
             )
             matches = self.labels_df[mask]["label"].astype(str)
 
@@ -343,9 +337,7 @@ class CommunityLabelsParser:
                 match = regex.search(label)
                 if match:
                     receptor_name = match.group()
-                    receptor_counts[receptor_name] = (
-                        receptor_counts.get(receptor_name, 0) + 1
-                    )
+                    receptor_counts[receptor_name] = receptor_counts.get(receptor_name, 0) + 1
 
         return dict(sorted(receptor_counts.items()))
 
@@ -354,23 +346,15 @@ class CommunityLabelsParser:
         return CellLabel(
             root_id=str(row.get("root_id", "")),
             label=str(row.get("label", "")),
-            supervoxel_id=str(row.get("supervoxel_id", ""))
-            if pd.notna(row.get("supervoxel_id"))
-            else None,
-            position_x=float(row.get("position_x"))
-            if pd.notna(row.get("position_x"))
-            else None,
-            position_y=float(row.get("position_y"))
-            if pd.notna(row.get("position_y"))
-            else None,
-            position_z=float(row.get("position_z"))
-            if pd.notna(row.get("position_z"))
-            else None,
+            supervoxel_id=(
+                str(row.get("supervoxel_id", "")) if pd.notna(row.get("supervoxel_id")) else None
+            ),
+            position_x=float(row.get("position_x")) if pd.notna(row.get("position_x")) else None,
+            position_y=float(row.get("position_y")) if pd.notna(row.get("position_y")) else None,
+            position_z=float(row.get("position_z")) if pd.notna(row.get("position_z")) else None,
         )
 
-    def export_filtered(
-        self, output_path: str, receptor_types: Optional[List[str]] = None
-    ) -> None:
+    def export_filtered(self, output_path: str, receptor_types: Optional[List[str]] = None) -> None:
         """
         Export filtered olfactory cells to CSV.
 

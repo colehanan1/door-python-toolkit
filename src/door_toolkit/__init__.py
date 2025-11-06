@@ -29,7 +29,7 @@ Modules:
 For more information, see: https://github.com/colehanan1/door-python-toolkit
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Cole Hanan"
 __license__ = "MIT"
 

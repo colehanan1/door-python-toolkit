@@ -9,7 +9,7 @@ README = PROJECT_ROOT / "README.md"
 
 setup(
     name="door-python-toolkit",
-    version="0.1.0",
+    version="0.2.0",
     description="Pure Python tooling for working with the DoOR (Database of Odorant Responses) dataset.",
     long_description=README.read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",

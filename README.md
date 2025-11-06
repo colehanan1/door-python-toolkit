@@ -206,12 +206,36 @@ export_subset(
 # Extract DoOR data
 door-extract --input DoOR.data/data --output door_cache
 
-# Validate cache
-python -c "from door_toolkit.utils import validate_cache; validate_cache('door_cache')"
+# Validate cache contents
+door-extract --validate door_cache
 
-# List odorants
-python -c "from door_toolkit.utils import list_odorants; print(list_odorants('door_cache', 'acetate'))"
+# List odorants (optional substring filter)
+door-extract --list-odorants door_cache --pattern acetate
+
+# Encode an odorant and show receptor responses
+door-extract --cache door_cache --odor "ethyl butyrate" --coverage
+
+# Compare multiple odorants (max/min tables, CSV export)
+door-extract --cache door_cache --odors "ethyl butyrate" "acetic acid" "butyric acid" --top 15 --coverage --save reports/odor-comparison
+
+# Inspect receptor / neuron response profiles (limit to top 25 hits + bottom 25 summary)
+door-extract --cache door_cache --receptor Or42b --top 25
+
+# Use receptor families (odorant, ionotropic, gustatory, neuron groups)
+door-extract --cache door_cache --receptor or --top 10
 ```
+
+Add `--debug` to any command to print detailed tracebacks and internal logging if something fails.
+
+Receptor group shortcuts:
+- `or` – Odorant receptors (OrXX)
+- `ir` – Ionotropic receptors (IrXX)
+- `gr` – Gustatory receptors (GrXX)
+- `neuron` – Antennal/palp neuron classes (ab*, ac*, pb*)
+
+Coverage output now reports both the strongest and weakest responding receptors for quick scanning.
+
+Multi-odor mode renders two tables—one ranked by `Δ(max-min)` (spread) and another by minimum response—so you can quickly identify both the most differential and the most suppressed receptors. Add `--save path/prefix` to emit CSVs with dash-separated column headers (e.g., `prefix-max-spread-receptors.csv`). Receptor lookups now include a trailing “Lowest responses” section mirroring the top list when `--top` is specified.
 
 ---
 

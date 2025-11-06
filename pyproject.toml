@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "DoOR-python-toolkit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python toolkit for working with the DoOR (Database of Odorant Responses) database"
 readme = "README.md"
 requires-python = ">=3.8"

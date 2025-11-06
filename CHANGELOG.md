@@ -13,6 +13,21 @@ All notable changes to this project will be documented in this file. The format 
 ### Fixed
 - _Placeholder_ – document bug fixes here.
 
+## [0.2.0] - 2025-11-06
+
+### Added
+- Multi-odor CLI workflow via `door-extract --odors` for side-by-side receptor comparisons, including automatic spread ranking.
+- Receptor group shortcuts (`--receptor or|ir|gr|neuron`) with tail summaries that highlight the lowest responding odorants alongside the top hits.
+- CSV export support (`--save`) for receptor and odor comparison tables, writing dash-separated headers for easy downstream processing.
+- Coverage output now reports both the strongest and weakest receptors to speed up exploratory analysis.
+
+### Changed
+- README instructions updated with multi-odor and receptor-tail examples, plus clarified debugging guidance.
+
+### Fixed
+- Normalised cache indices to use `InChIKey`, preventing lookup errors when encoding odors from extracted datasets.
+- Coerced response matrices to numeric dtype to keep coverage statistics and ranking functions stable.
+
 ## [0.1.0] - 2025-11-06
 
 ### Added
@@ -38,5 +53,6 @@ Upcoming releases will continue to expand the toolkit (e.g., receptor selection 
 
 Release links:
 
-- [Unreleased](https://github.com/colehanan1/door-python-toolkit/compare/v0.1.0...HEAD)
+- [Unreleased](https://github.com/colehanan1/door-python-toolkit/compare/v0.2.0...HEAD)
+- [0.2.0](https://github.com/colehanan1/door-python-toolkit/compare/v0.1.0...v0.2.0)
 - [0.1.0](https://github.com/colehanan1/door-python-toolkit/releases/tag/v0.1.0)

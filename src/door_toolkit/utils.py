@@ -57,7 +57,15 @@ def load_odor_metadata(cache_path: str) -> pd.DataFrame:
         DataFrame with odorant metadata (CAS, SMILES, MW, etc.)
     """
     cache_dir = Path(cache_path)
-    return pd.read_parquet(cache_dir / "odor_metadata.parquet")
+    df = pd.read_parquet(cache_dir / "odor_metadata.parquet")
+
+    if "InChIKey" in df.columns and df.index.name != "InChIKey":
+        # Preserve original index as column if needed
+        if df.index.name and df.index.name not in df.columns:
+            df = df.reset_index(names=df.index.name)
+        df = df.set_index("InChIKey", drop=True)
+
+    return df
 
 
 def list_odorants(cache_path: str, pattern: Optional[str] = None) -> List[str]:

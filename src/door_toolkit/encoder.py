@@ -70,15 +70,48 @@ class DoOREncoder:
         # Load response matrix (InChIKey → receptor responses)
         self.response_matrix = pd.read_parquet(self.cache_path / "response_matrix_norm.parquet")
 
+        if "InChIKey" in self.response_matrix.columns:
+            self.response_matrix = self.response_matrix.set_index("InChIKey", drop=True)
+        elif self.response_matrix.index.name in {"rownames", "index"}:
+            self.response_matrix.index.name = "InChIKey"
+        elif self.response_matrix.index.name != "InChIKey":
+            logger.warning(
+                "Response matrix index is '%s' (expected 'InChIKey').",
+                self.response_matrix.index.name,
+            )
+
+        # Ensure numeric dtype for receptor responses
+        self.response_matrix = self.response_matrix.apply(
+            lambda col: pd.to_numeric(col, errors="coerce")
+        )
+
         # Load metadata (InChIKey → Name, CAS, etc.)
         self.metadata = pd.read_parquet(self.cache_path / "odor_metadata.parquet")
 
+        # Normalise metadata index to use InChIKey for reliable lookups
+        if "InChIKey" in self.metadata.columns and self.metadata.index.name != "InChIKey":
+            if self.metadata.index.name and self.metadata.index.name not in self.metadata.columns:
+                self.metadata = self.metadata.reset_index(names=self.metadata.index.name)
+            self.metadata = self.metadata.set_index("InChIKey", drop=True)
+        elif self.metadata.index.name != "InChIKey":
+            logger.warning(
+                "Metadata index is '%s' (expected 'InChIKey'). Lookups may fail.",
+                self.metadata.index.name,
+            )
+
         # Create name lookup (case-insensitive)
-        self.name_to_inchikey = {
-            name.lower(): inchikey
-            for inchikey, name in self.metadata["Name"].items()
-            if pd.notna(name)
-        }
+        self.name_to_inchikey = {}
+        for inchikey, row in self.metadata.iterrows():
+            name = row.get("Name")
+            if pd.notna(name):
+                self.name_to_inchikey[str(name).lower()] = inchikey
+
+            synonyms = row.get("Synonyms")
+            if isinstance(synonyms, str):
+                for alias in synonyms.split(";"):
+                    alias = alias.strip()
+                    if alias:
+                        self.name_to_inchikey.setdefault(alias.lower(), inchikey)
 
         # Expose attributes
         self.n_channels = self.response_matrix.shape[1]
@@ -90,17 +123,19 @@ class DoOREncoder:
             f"{self.n_channels} receptor channels"
         )
 
-    def encode(self, odor_name: str, fill_missing: float = 0.0):
+    def encode(
+        self, odor_name: str | List[str], fill_missing: float = 0.0
+    ):
         """
-        Encode single odorant to PN activation vector.
+        Encode one or more odorants to PN activation vector(s).
 
         Args:
-            odor_name: Odorant name (case-insensitive)
+            odor_name: Odorant name or list of odorant names (case-insensitive)
             fill_missing: Value for missing receptor responses (default: 0.0)
 
         Returns:
-            NumPy array or torch.Tensor (if use_torch=True) of shape (n_channels,)
-            with PN activations in range [0, 1]
+            - Single odorant: NumPy array / torch.Tensor of shape (n_channels,)
+            - Multiple odorants: NumPy array / torch.Tensor of shape (n_odorants, n_channels)
 
         Raises:
             KeyError: If odorant not found in database
@@ -111,11 +146,23 @@ class DoOREncoder:
             >>> print(pn.shape)
             (78,)
         """
+        if isinstance(odor_name, (list, tuple)):
+            batch = [self.encode(name, fill_missing) for name in odor_name]
+            if self.use_torch:
+                return torch.stack(batch)
+            return np.stack(batch)
+
         name_lower = odor_name.lower()
 
         if name_lower not in self.name_to_inchikey:
+            import difflib
+
+            suggestions = difflib.get_close_matches(name_lower, self.odorant_names, n=5, cutoff=0.6)
+            suggestion_text = (
+                f" Did you mean: {', '.join(sorted(set(suggestions)))}?" if suggestions else ""
+            )
             raise KeyError(
-                f"Odorant '{odor_name}' not found in DoOR database. "
+                f"Odorant '{odor_name}' not found in DoOR database.{suggestion_text} "
                 f"Use list_available_odorants() to see options."
             )
 
@@ -220,7 +267,7 @@ class DoOREncoder:
             raise KeyError(f"Odorant '{odor_name}' not found")
 
         inchikey = self.name_to_inchikey[name_lower]
-        response = self.response_matrix.loc[inchikey]
+        response = pd.to_numeric(self.response_matrix.loc[inchikey], errors="coerce")
 
         return {
             "n_tested": int(response.notna().sum()),
@@ -228,6 +275,7 @@ class DoOREncoder:
             "max_response": float(response.max()),
             "mean_response": float(response.mean()),
             "top_receptors": response.nlargest(5).to_dict(),
+            "bottom_receptors": response.nsmallest(5).to_dict(),
         }
 
     def get_odor_metadata(self, odor_name: str) -> Dict:

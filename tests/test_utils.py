@@ -9,14 +9,14 @@ from door_toolkit.utils import (
     load_odor_metadata,
     list_odorants,
     get_receptor_info,
-    validate_cache
+    validate_cache,
 )
 from tests.fixtures import mock_door_cache
 
 
 class TestUtils:
     """Test utility functions."""
-    
+
     def test_load_response_matrix_parquet(self, mock_door_cache):
         """Test loading response matrix in parquet format."""
         df = load_response_matrix(str(mock_door_cache), format="parquet")
@@ -42,7 +42,7 @@ class TestUtils:
         assert len(meta) == 20
         assert "Name" in meta.columns
         assert "CAS" in meta.columns
-    
+
     def test_list_odorants(self, mock_door_cache):
         """Test listing odorants."""
         odors = list_odorants(str(mock_door_cache))

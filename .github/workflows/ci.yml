@@ -15,10 +15,10 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     
     steps:
-    - uses: actions/checkout@v3
-    
+    - uses: actions/checkout@v4
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     
@@ -29,16 +29,16 @@ jobs:
     
     - name: Lint with flake8
       run: |
-        flake8 door_toolkit --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 door_toolkit --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
+        flake8 src/door_toolkit --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src/door_toolkit --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
     - name: Check formatting with black
       run: |
-        black --check door_toolkit/
-    
+        black --check src/door_toolkit/
+
     - name: Type check with mypy
       run: |
-        mypy door_toolkit/ --ignore-missing-imports
+        mypy src/door_toolkit/ --ignore-missing-imports
       continue-on-error: true
     
     - name: Run tests
@@ -46,7 +46,7 @@ jobs:
         pytest tests/ -v --cov=door_toolkit --cov-report=xml --cov-report=term
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
@@ -55,14 +55,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: test
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
+    - uses: actions/checkout@v4
+
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
+        python-version: "3.11"
     
     - name: Install build dependencies
       run: |
@@ -78,7 +78,7 @@ jobs:
         twine check dist/*
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/

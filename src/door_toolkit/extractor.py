@@ -29,6 +29,7 @@ import pandas as pd
 
 try:
     import pyreadr
+
     PYREADR_AVAILABLE = True
 except ImportError:
     pyreadr = None
@@ -37,8 +38,8 @@ except ImportError:
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="[%(asctime)s] %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -46,12 +47,12 @@ logger = logging.getLogger(__name__)
 class DoORExtractor:
     """
     Extract and cache DoOR odorant response data in Python-native formats.
-    
+
     Attributes:
         input_dir: Path to DoOR.data/data directory containing .RData files
         output_dir: Path to output cache directory
     """
-    
+
     def __init__(self, input_dir: Path, output_dir: Path):
         if not PYREADR_AVAILABLE:
             raise ImportError(
@@ -65,24 +66,24 @@ class DoORExtractor:
         # Validate input
         if not self.input_dir.exists():
             raise FileNotFoundError(f"Input directory not found: {self.input_dir}")
-        
+
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"[INIT] Input: {self.input_dir}")
         logger.info(f"[INIT] Output: {self.output_dir}")
-    
+
     def load_rdata(self, rdata_path: Path) -> Dict:
         """
         Load an RData file and return all objects as a dictionary.
-        
+
         Args:
             rdata_path: Path to .RData file
-            
+
         Returns:
             Dictionary mapping object names to their values (typically pandas DataFrames)
         """
         logger.debug(f"Loading RData: {rdata_path.name}")
-        
+
         try:
             result = pyreadr.read_r(str(rdata_path))
             logger.debug(f"  -> Loaded {len(result)} objects: {list(result.keys())}")
@@ -90,98 +91,105 @@ class DoORExtractor:
         except Exception as e:
             logger.error(f"Failed to load {rdata_path.name}: {e}")
             raise
-    
+
     def extract_response_matrix(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Extract the main odorant × receptor response matrix.
-        
+
         Returns:
             Tuple of (normalized_matrix, non_normalized_matrix) as DataFrames
             Rows = odorants, Columns = receptors/ORNs
         """
         logger.info("[EXTRACT] Response matrices...")
-        
+
         # Load normalized response matrix
         norm_path = self.input_dir / "response.matrix.RData"
         non_norm_path = self.input_dir / "response.matrix_non.normalized.RData"
-        
+
         if not norm_path.exists():
             raise FileNotFoundError(f"response.matrix.RData not found in {self.input_dir}")
-        
+
         norm_data = self.load_rdata(norm_path)
-        response_norm = norm_data['response.matrix']
-        
+        response_norm = norm_data["response.matrix"]
+
         non_norm_data = self.load_rdata(non_norm_path)
-        response_non_norm = non_norm_data['response.matrix_non.normalized']
-        
+        response_non_norm = non_norm_data["response.matrix_non.normalized"]
+
         logger.info(f"  Normalized matrix: {response_norm.shape} (odorants × receptors)")
         logger.info(f"  Non-normalized matrix: {response_non_norm.shape}")
-        logger.info(f"  Sparsity: {(response_norm.isna().sum().sum() / response_norm.size) * 100:.2f}% missing")
-        
+        logger.info(
+            f"  Sparsity: {(response_norm.isna().sum().sum() / response_norm.size) * 100:.2f}% missing"
+        )
+
         return response_norm, response_non_norm
-    
+
     def extract_odor_metadata(self) -> pd.DataFrame:
         """
         Extract odor metadata (CAS numbers, names, chemical properties).
-        
+
         Returns:
             DataFrame with odor information
         """
         logger.info("[EXTRACT] Odor metadata...")
-        
+
         odor_path = self.input_dir / "odor.RData"
         if not odor_path.exists():
             logger.warning("odor.RData not found, skipping metadata")
             return pd.DataFrame()
-        
+
         odor_data = self.load_rdata(odor_path)
-        odor_df = odor_data['odor']
-        
+        odor_df = odor_data["odor"]
+
         logger.info(f"  Odor metadata: {odor_df.shape[0]} odorants, {odor_df.shape[1]} attributes")
         logger.info(f"  Columns: {list(odor_df.columns)}")
-        
+
         return odor_df
-    
+
     def extract_al_map(self) -> pd.DataFrame:
         """
         Extract antennal lobe (AL) glomerular mapping.
-        
+
         Returns:
             DataFrame mapping receptors to glomeruli
         """
         logger.info("[EXTRACT] AL glomerular map...")
-        
+
         al_path = self.input_dir / "AL.map.RData"
         if not al_path.exists():
             logger.warning("AL.map.RData not found, skipping")
             return pd.DataFrame()
-        
+
         al_data = self.load_rdata(al_path)
-        
+
         # Handle different possible key names or empty data
         if not al_data:
             logger.warning("  AL.map.RData is empty")
             return pd.DataFrame()
-        
+
         # Try common key names
-        for key in ['AL.map', 'ALmap', 'al.map']:
+        for key in ["AL.map", "ALmap", "al.map"]:
             if key in al_data:
                 al_df = al_data[key]
                 logger.info(f"  AL map: {al_df.shape[0]} mappings")
                 return al_df
-        
+
         logger.warning(f"  AL map keys not found. Available: {list(al_data.keys())}")
         return pd.DataFrame()
-    
+
     def compute_data_hash(self, df: pd.DataFrame) -> str:
         """Compute SHA256 hash of DataFrame for cache validation."""
         return hashlib.sha256(pd.util.hash_pandas_object(df, index=True).values).hexdigest()[:16]
-    
-    def save_cache(self, response_norm: pd.DataFrame, response_non_norm: pd.DataFrame,
-                   odor_meta: pd.DataFrame, al_map: pd.DataFrame):
+
+    def save_cache(
+        self,
+        response_norm: pd.DataFrame,
+        response_non_norm: pd.DataFrame,
+        odor_meta: pd.DataFrame,
+        al_map: pd.DataFrame,
+    ):
         """
         Save extracted data to cache in multiple formats.
-        
+
         Saves:
             - Parquet files (efficient, type-safe)
             - CSV files (human-readable)
@@ -189,32 +197,32 @@ class DoORExtractor:
             - Metadata JSON
         """
         logger.info("[CACHE] Writing cache files...")
-        
+
         # Save parquet (recommended for Python workflows)
         response_norm.to_parquet(self.output_dir / "response_matrix_norm.parquet")
         response_non_norm.to_parquet(self.output_dir / "response_matrix_non_norm.parquet")
-        
+
         if not odor_meta.empty:
             odor_meta.to_parquet(self.output_dir / "odor_metadata.parquet")
-        
+
         if not al_map.empty:
             al_map.to_parquet(self.output_dir / "al_map.parquet")
-        
+
         # Save CSV (for inspection/compatibility)
         response_norm.to_csv(self.output_dir / "response_matrix_norm.csv")
-        
+
         # Save numpy arrays (for ML training)
         # Convert to float32 for efficiency, fill NaN with 0
         response_numeric = response_norm.fillna(0.0).astype(np.float32).values
         np.save(self.output_dir / "response_matrix_norm.npy", response_numeric)
-        
+
         # Save receptor/odor indices
-        receptor_names = pd.Series(response_norm.columns, name='receptor')
+        receptor_names = pd.Series(response_norm.columns, name="receptor")
         receptor_names.to_csv(self.output_dir / "receptor_index.csv", index=False)
-        
-        odor_names = pd.Series(response_norm.index, name='odorant')
+
+        odor_names = pd.Series(response_norm.index, name="odorant")
         odor_names.to_csv(self.output_dir / "odorant_index.csv", index=False)
-        
+
         # Save metadata
         metadata = {
             "source": "DoOR v2.0.0",
@@ -225,18 +233,18 @@ class DoORExtractor:
             "response_range": [float(response_norm.min().min()), float(response_norm.max().max())],
             "data_hash": self.compute_data_hash(response_norm),
             "receptor_list": list(response_norm.columns),
-            "odorant_count_per_receptor": response_norm.notna().sum().to_dict()
+            "odorant_count_per_receptor": response_norm.notna().sum().to_dict(),
         }
-        
-        with open(self.output_dir / "metadata.json", 'w') as f:
+
+        with open(self.output_dir / "metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
-        
+
         logger.info(f"  ✓ Cached {len(list(self.output_dir.glob('*')))} files")
-        
+
     def generate_report(self, response_norm: pd.DataFrame, odor_meta: pd.DataFrame):
         """Generate a markdown summary report."""
         logger.info("[REPORT] Generating summary...")
-        
+
         report = f"""# DoOR Data Extraction Report
 
 **Generated:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}  
@@ -255,12 +263,12 @@ class DoORExtractor:
 | Receptor | Odorants Tested | Coverage % |
 |----------|----------------|------------|
 """
-        
+
         coverage = response_norm.notna().sum().sort_values(ascending=False).head(10)
         for receptor, count in coverage.items():
             pct = (count / response_norm.shape[0]) * 100
             report += f"| {receptor} | {count} | {pct:.1f}% |\n"
-        
+
         report += f"""
 ## Glomerular Distribution
 
@@ -333,35 +341,35 @@ class DoOREncoder:
 ---
 *DoOR Database: Münch & Galizia (2016), Scientific Data 3:160122*
 """
-        
+
         report_path = self.output_dir / "extraction_report.md"
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             f.write(report)
-        
+
         logger.info(f"  ✓ Report saved: {report_path}")
         print(f"\n{report}\n")
-    
+
     def run(self):
         """Execute full extraction pipeline."""
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info("DoOR Data Extraction Pipeline - PGCN Project")
-        logger.info("="*60)
-        
+        logger.info("=" * 60)
+
         # Extract all components
         response_norm, response_non_norm = self.extract_response_matrix()
         odor_meta = self.extract_odor_metadata()
         al_map = self.extract_al_map()
-        
+
         # Save cache
         self.save_cache(response_norm, response_non_norm, odor_meta, al_map)
-        
+
         # Generate report
         self.generate_report(response_norm, odor_meta)
-        
-        logger.info("="*60)
+
+        logger.info("=" * 60)
         logger.info("[SUCCESS] DoOR extraction complete!")
         logger.info(f"Cache location: {self.output_dir.absolute()}")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
 
 def main():
@@ -378,34 +386,28 @@ Examples:
     
     # Enable debug logging
     python door_extractor.py -i DoOR.data/data -o cache --debug
-        """
+        """,
     )
-    
+
     parser.add_argument(
-        '-i', '--input',
+        "-i",
+        "--input",
         type=Path,
         required=True,
-        help='Path to DoOR.data/data directory containing .RData files'
+        help="Path to DoOR.data/data directory containing .RData files",
     )
-    
+
     parser.add_argument(
-        '-o', '--output',
-        type=Path,
-        required=True,
-        help='Output directory for cached data'
+        "-o", "--output", type=Path, required=True, help="Output directory for cached data"
     )
-    
-    parser.add_argument(
-        '--debug',
-        action='store_true',
-        help='Enable debug logging'
-    )
-    
+
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+
     args = parser.parse_args()
-    
+
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
     # Run extraction
     try:
         extractor = DoORExtractor(args.input, args.output)
@@ -415,5 +417,5 @@ Examples:
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

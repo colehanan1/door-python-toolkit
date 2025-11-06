@@ -39,7 +39,7 @@ from door_toolkit.utils import list_odorants, load_response_matrix
 
 __all__ = [
     "DoORExtractor",
-    "DoOREncoder", 
+    "DoOREncoder",
     "list_odorants",
     "load_response_matrix",
 ]

@@ -8,5 +8,5 @@ Usage:
 
 from door_toolkit.cli import extract_main
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     extract_main()

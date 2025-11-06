@@ -10,13 +10,13 @@ from tests.fixtures import mock_door_cache, mock_encoder, mock_encoder_torch
 
 class TestDoOREncoder:
     """Test DoOREncoder functionality."""
-    
+
     def test_encoder_init(self, mock_encoder):
         """Test encoder initialization."""
         assert mock_encoder.n_channels == 10
         assert len(mock_encoder.receptor_names) == 10
         assert len(mock_encoder.odorant_names) == 20
-    
+
     def test_encode_single(self, mock_encoder):
         """Test encoding single odorant."""
         # Use first available odorant
@@ -26,7 +26,7 @@ class TestDoOREncoder:
         assert pn.shape == (10,)
         assert pn.dtype == np.float32
         assert np.all((pn >= 0) | np.isnan(pn))  # Allow NaN for missing data
-    
+
     def test_encode_batch(self, mock_encoder):
         """Test batch encoding."""
         odors = mock_encoder.odorant_names[:3]
@@ -34,7 +34,7 @@ class TestDoOREncoder:
 
         assert pn_batch.shape == (3, 10)
         assert pn_batch.dtype == np.float32
-    
+
     def test_encode_not_found(self, mock_encoder):
         """Test encoding non-existent odorant."""
         with pytest.raises(KeyError):
@@ -84,6 +84,7 @@ def test_torch_integration(mock_door_cache):
     """Test PyTorch tensor output."""
     try:
         import torch
+
         encoder = DoOREncoder(str(mock_door_cache), use_torch=True)
 
         odor = encoder.odorant_names[0]

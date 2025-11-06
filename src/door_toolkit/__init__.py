@@ -9,14 +9,14 @@ No R installation required.
 
 Basic Usage:
     >>> from door_toolkit import DoORExtractor, DoOREncoder
-    
+
     >>> # Extract R data to Python formats
     >>> extractor = DoORExtractor(
     ...     input_dir="DoOR.data/data",
     ...     output_dir="door_cache"
     ... )
     >>> extractor.run()
-    
+
     >>> # Use in machine learning
     >>> encoder = DoOREncoder("door_cache")
     >>> pn_activation = encoder.encode("acetic acid")

@@ -1,222 +1,111 @@
-# Contributing to DoOR Python Toolkit
+# Contributing to the DoOR Python Toolkit
 
-Thank you for considering contributing to the DoOR Python Toolkit! This document provides guidelines and instructions for contributing.
+Thanks for your interest in contributing! We welcome bug reports, feature ideas, documentation improvements, and code contributions that make this toolkit more useful for the olfactory neuroscience community.
 
-## Code of Conduct
+---
 
-Be respectful, inclusive, and constructive. We're all here to advance Drosophila neuroscience research.
+## Code of conduct
 
-## How to Contribute
+We expect everyone to foster a respectful, inclusive environment. Be kind, assume good intent, and help newcomers succeed. If you experience or witness unacceptable behaviour, please email [c.b.hanan@wustl.edu](mailto:c.b.hanan@wustl.edu).
 
-### Reporting Bugs
+---
 
-1. Check [existing issues](https://github.com/colehanan1/door-python-toolkit/issues) first
-2. Create a new issue with:
-   - Clear description of the bug
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Python version and OS
-   - Error messages/stack traces
+## Reporting bugs
 
-### Suggesting Features
+1. Search existing issues to avoid duplicates.
+2. Open a new issue using the **Bug report** template.
+3. Include:
+   - steps to reproduce,
+   - expected vs. actual behaviour,
+   - environment details (OS, Python version, package version),
+   - relevant logs or stack traces.
 
-1. Open an issue with `[Feature Request]` prefix
-2. Describe the use case and benefits
-3. Provide example code if possible
+Critical regressions should be flagged clearly in the issue title.
 
-### Contributing Code
+---
 
-#### Setup Development Environment
+## Suggesting features
+
+Use the **Feature request** template to share ideas. Tell us:
+- what problem you are solving,
+- how you envision the solution working,
+- any alternative approaches considered.
+
+Community discussion helps refine scope before code changes begin.
+
+---
+
+## Development setup
 
 ```bash
-# Fork and clone
 git clone https://github.com/colehanan1/door-python-toolkit.git
 cd door-python-toolkit
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install in development mode
-pip install -e .[dev]
-
-# Run tests
-pytest tests/
+python -m venv .venv
+source .venv/bin/activate
+make install-dev
 ```
 
-#### Development Workflow
+Helpful Makefile targets:
+- `make extract INPUT=... OUTPUT=...` – run the data extractor
+- `make validate CACHE=door_cache` – check a cache directory
+- `make lint` / `make format` – static analysis and formatting checks
+- `make test` – run the full test suite
+- `make clean` – remove build and coverage artifacts
 
-1. **Create a branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+When working from the repository without installing the package, the helper scripts in `scripts/` ensure `PYTHONPATH` is configured correctly:
+- `./scripts/door-extract`
+- `./scripts/validate-cache`
 
-2. **Make changes**
-   - Write clear, documented code
-   - Follow PEP 8 style guidelines
-   - Add type hints
-   - Include docstrings (Google/NumPy style)
+---
 
-3. **Test your changes**
-   ```bash
-   # Run tests
-   pytest tests/ -v
-   
-   # Check coverage
-   pytest --cov=door_toolkit tests/
-   
-   # Format code
-   black door_toolkit/
-   
-   # Lint
-   flake8 door_toolkit/
-   
-   # Type check
-   mypy door_toolkit/
-   ```
+## Coding standards
 
-4. **Commit changes**
-   ```bash
-   git add .
-   git commit -m "feat: add amazing feature"
-   ```
-   
-   Use conventional commit messages:
-   - `feat:` New feature
-   - `fix:` Bug fix
-   - `docs:` Documentation changes
-   - `test:` Test additions/changes
-   - `refactor:` Code refactoring
-   - `style:` Formatting changes
-   - `chore:` Maintenance tasks
+- **Python style:** Black (line length 100) and Flake8 (configured in CI). Run `make format` and `make lint`.
+- **Typing:** Add or preserve type hints where practical. `make type-check` runs MyPy with project settings.
+- **Imports:** Use absolute imports from `door_toolkit`. Keep standard library, third-party, and local imports grouped.
+- **Documentation:** Update docstrings and README sections impacted by your changes. Add examples if they help clarify behaviour.
 
-5. **Push and create PR**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-   
-   Then open a Pull Request on GitHub with:
-   - Clear title and description
-   - Reference related issues
-   - Include tests for new features
-   - Update documentation as needed
+---
 
-#### Code Style
+## Testing requirements
 
-- **Formatting**: Use `black` for automatic formatting
-- **Line length**: 88 characters (black default)
-- **Imports**: Sort with `isort`
-- **Docstrings**: Google or NumPy style
-- **Type hints**: Use where appropriate
+- Add or update unit tests in `tests/` to cover new behaviour.
+- Run `make test` before submitting a pull request.
+- If PyTorch functionality is affected, ensure the optional `test_torch_integration` path is considered (install extras `pip install .[torch]` locally if needed).
+- For extractor workflow changes, include fixtures or mocks so tests do not rely on large datasets.
 
-Example:
-```python
-from typing import List, Optional
-import numpy as np
+---
 
-def encode_odorants(
-    odor_names: List[str],
-    fill_missing: float = 0.0
-) -> np.ndarray:
-    """
-    Encode odorant names to activation vectors.
-    
-    Args:
-        odor_names: List of odorant names
-        fill_missing: Value for missing responses (default: 0.0)
-        
-    Returns:
-        NumPy array of shape (n_odors, n_receptors)
-        
-    Raises:
-        KeyError: If odorant not found in database
-        
-    Example:
-        >>> activations = encode_odorants(["acetic acid", "ethanol"])
-        >>> print(activations.shape)
-        (2, 78)
-    """
-    # Implementation
-    pass
-```
+## Pull request process
 
-#### Testing Guidelines
+1. Create a working branch (`git switch -c feature/my-improvement`).
+2. Make focused commits with descriptive messages.
+3. Update documentation, changelog, and version number when appropriate.
+4. Ensure CI passes (formatting, linting, typing, tests).
+5. Submit a PR and complete the checklist:
+   - Linked issue (if applicable)
+   - Explanation of changes and testing
+   - Screenshots or logs for UI/CLI updates
 
-- Write tests for all new features
-- Aim for >80% code coverage
-- Use descriptive test names
-- Include edge cases
-- Use pytest fixtures for setup
+PR reviews focus on correctness, clarity, and maintainability. Be ready to iterate based on feedback.
 
-Example:
-```python
-import pytest
-from door_toolkit import DoOREncoder
+---
 
-class TestDoOREncoder:
-    @pytest.fixture
-    def encoder(self):
-        return DoOREncoder("door_cache")
-    
-    def test_encode_single_odorant(self, encoder):
-        """Test encoding a single odorant."""
-        result = encoder.encode("acetic acid")
-        assert result.shape == (78,)
-        assert result.dtype == np.float32
-```
+## Changelog updates
 
-#### Documentation
+When your change affects users, add an entry under the **Unreleased** section of `CHANGELOG.md` with a short description (e.g. “Fixed cache validation for missing metadata” or “Added support for Python 3.12”).
 
-- Update README.md for user-facing changes
-- Add docstrings to all public functions/classes
-- Include examples in docstrings
-- Update API reference if needed
+---
 
-### Pull Request Process
+## Release workflow
 
-1. **Before submitting:**
-   - All tests pass
-   - Code is formatted (`black`)
-   - No linting errors (`flake8`)
-   - Documentation is updated
-   - CHANGELOG.md is updated
+Maintainers use the scripts in `scripts/` (`bump-version.sh`, `publish-pypi.sh`) to prepare and publish releases. If you are helping with a release:
+- Merge all relevant PRs.
+- Update version numbers and changelog entries.
+- Tag the release and push to GitHub.
 
-2. **PR checklist:**
-   - [ ] Tests added/updated
-   - [ ] Documentation updated
-   - [ ] CHANGELOG.md updated
-   - [ ] Code formatted with black
-   - [ ] No flake8 errors
-   - [ ] Type hints added
-   - [ ] All CI checks pass
-
-3. **Review process:**
-   - Maintainers will review your PR
-   - Address feedback promptly
-   - Keep PR focused and small
-   - Be patient and respectful
-
-## Release Process
-
-(For maintainers)
-
-1. Update version in `setup.py` and `__init__.py`
-2. Update CHANGELOG.md
-3. Create git tag: `git tag v0.1.0`
-4. Push tag: `git push origin v0.1.0`
-5. Build and publish: `python -m build && twine upload dist/*`
-
-## Questions?
-
-- Open an issue for questions
-- Check [documentation](https://door-python-toolkit.readthedocs.io)
-- Email: c.b.hanan@wustl.edu
+---
 
 ## Recognition
 
-Contributors will be acknowledged in:
-- README.md contributors section
-- CHANGELOG.md for their contributions
-- GitHub contributors page
-
-Thank you for contributing to Drosophila neuroscience research! 🧬🐝
+We credit contributors in the release notes and encourage you to add yourself to the acknowledgments section if your contributions are substantial. Thank you for helping improve the DoOR Python Toolkit!

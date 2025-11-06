@@ -37,15 +37,16 @@ classifiers = [
 ]
 
 dependencies = [
-    "pyreadr>=0.4.7",
     "pandas>=1.5.0",
     "numpy>=1.21.0",
     "pyarrow>=12.0.0",
 ]
 
 [project.optional-dependencies]
+extract = ["pyreadr>=0.4.7"]
 torch = ["torch>=2.0.0"]
 dev = [
+    'tomli>=2.0.1; python_version<"3.11"',
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "black>=23.0.0",

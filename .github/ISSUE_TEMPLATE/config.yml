@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: DoOR Python Toolkit Documentation
+    url: https://door-python-toolkit.readthedocs.io
+    about: Review the docs for usage guides and FAQs.

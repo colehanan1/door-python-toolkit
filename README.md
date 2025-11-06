@@ -1,8 +1,8 @@
-# DoOR Python Toolkit
-
 [![PyPI version](https://badge.fury.io/py/door-python-toolkit.svg)](https://badge.fury.io/py/door-python-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+# DoOR Python Toolkit
 
 **Python toolkit for working with the DoOR (Database of Odorant Responses) database.**
 
@@ -27,6 +27,11 @@ Extract, analyze, and integrate *Drosophila* odorant-receptor response data in p
 
 ```bash
 pip install door-python-toolkit
+```
+
+For extraction workflows (requires `pyreadr`):
+```bash
+pip install door-python-toolkit[extract]
 ```
 
 For PyTorch support:
@@ -279,12 +284,12 @@ make format
 
 **Core:**
 - Python ≥ 3.8
-- pyreadr ≥ 0.4.7
 - pandas ≥ 1.5.0
 - numpy ≥ 1.21.0
 - pyarrow ≥ 12.0.0
 
 **Optional:**
+- pyreadr ≥ 0.4.7 (required for `DoORExtractor`)
 - torch ≥ 2.0.0 (for PyTorch integration)
 
 ---

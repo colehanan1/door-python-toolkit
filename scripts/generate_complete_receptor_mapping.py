@@ -10,7 +10,7 @@ with known strong connectivity) are available for Analysis 2.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import pandas as pd
 
@@ -34,7 +34,7 @@ STANDARD_MAPPING: List[Tuple[str, str, str]] = [
     ("Or47b", "VA1d", "ORN"),
     ("Or49a", "VA3", "ORN"),
     ("Or49b", "DC1", "ORN"),
-    ("Or56a", "DA2", "ORN"),
+    ("Or56a", "DA1", "ORN"),
     ("Or59a", "DM1", "ORN"),
     ("Or59b", "DL4", "ORN"),
     ("Or59c", "VA4", "ORN"),
@@ -69,6 +69,113 @@ STANDARD_MAPPING: List[Tuple[str, str, str]] = [
     ("ab4B", "ab4B", "ORN"),
 ]
 
+EXTRA_MAPPINGS: List[Dict[str, str]] = [
+    {
+        "door_name": "Or9a",
+        "flywire_glomerulus": "VM4",
+        "cell_type": "ORN",
+        "source": "Couto et al. 2005; Fishilevich & Vosshall 2005",
+        "confidence": "high",
+        "notes": "Responds to hexanol and benzaldehyde",
+    },
+    {
+        "door_name": "Or30a",
+        "flywire_glomerulus": "DL2v",
+        "cell_type": "ORN",
+        "source": "Couto et al. 2005; Hallem & Carlson 2006",
+        "confidence": "high",
+        "notes": "Benzaldehyde-responsive",
+    },
+    {
+        "door_name": "Or33c",
+        "flywire_glomerulus": "VC2",
+        "cell_type": "ORN",
+        "source": "Hallem & Carlson 2006; Silbering et al. 2008",
+        "confidence": "high",
+        "notes": "Aromatic compounds",
+    },
+    {
+        "door_name": "Or2a",
+        "flywire_glomerulus": "DC4",
+        "cell_type": "ORN",
+        "source": "Couto et al. 2005; Dobritsa et al. 2003",
+        "confidence": "high",
+        "notes": "Antennal sensillum ab3A",
+    },
+    {
+        "door_name": "Or46a",
+        "flywire_glomerulus": "VA7l",
+        "cell_type": "ORN",
+        "source": "Couto et al. 2005",
+        "confidence": "high",
+        "notes": "Responds to esters",
+    },
+    {
+        "door_name": "Or56a",
+        "flywire_glomerulus": "DA1",
+        "cell_type": "ORN",
+        "source": "Couto et al. 2005; Hallem & Carlson 2006",
+        "confidence": "high",
+        "notes": "Geosmin receptor",
+    },
+    {
+        "door_name": "Or94a",
+        "flywire_glomerulus": "VA6",
+        "cell_type": "ORN",
+        "source": "Couto et al. 2005",
+        "confidence": "medium",
+        "notes": "Phenylacetaldehyde-sensitive",
+    },
+    {
+        "door_name": "Or94b",
+        "flywire_glomerulus": "VA7l",
+        "cell_type": "ORN",
+        "source": "Couto et al. 2005",
+        "confidence": "medium",
+        "notes": "Co-expressed with Or46a (variant)",
+    },
+    {
+        "door_name": "Ir76a",
+        "flywire_glomerulus": "DC1",
+        "cell_type": "ORN",
+        "source": "Silbering et al. 2011; Benton et al. 2009",
+        "confidence": "high",
+        "notes": "Ionotropic receptor for acids",
+    },
+    {
+        "door_name": "Ir64a",
+        "flywire_glomerulus": "DC4",
+        "cell_type": "ORN",
+        "source": "Silbering et al. 2011",
+        "confidence": "high",
+        "notes": "Ionotropic receptor (acids)",
+    },
+    {
+        "door_name": "Ir31a",
+        "flywire_glomerulus": "VC4",
+        "cell_type": "ORN",
+        "source": "Silbering et al. 2011",
+        "confidence": "high",
+        "notes": "Ionotropic receptor",
+    },
+    {
+        "door_name": "Gr10a",
+        "flywire_glomerulus": "V",
+        "cell_type": "GRN",
+        "source": "Kwon et al. 2007; Jones et al. 2007",
+        "confidence": "medium",
+        "notes": "Gustatory receptor (CO2-like)",
+    },
+    {
+        "door_name": "Gr10b",
+        "flywire_glomerulus": "V",
+        "cell_type": "GRN",
+        "source": "Kwon et al. 2007",
+        "confidence": "medium",
+        "notes": "Gustatory receptor",
+    },
+]
+
 OUTPUT_FILE = Path("data/mappings/door_to_flywire_mapping_complete.csv")
 DOOR_CACHE = Path("door_cache/response_matrix_norm.parquet")
 
@@ -95,12 +202,28 @@ def main() -> None:
             {
                 "door_name": door_name,
                 "flywire_glomerulus": normalize_glomerulus(glomerulus),
-                "receptor_type": cell_type,
+                "cell_type": cell_type,
                 "source": "literature_standard",
+                "confidence": "medium",
+                "notes": "",
             }
         )
 
     mapping_df = pd.DataFrame(records)
+
+    for record in EXTRA_MAPPINGS:
+        extra = record.copy()
+        extra["flywire_glomerulus"] = normalize_glomerulus(extra["flywire_glomerulus"])
+        door_name = extra["door_name"]
+        mask = mapping_df["door_name"] == door_name
+        if mask.any():
+            for key, value in extra.items():
+                mapping_df.loc[mask, key] = value
+        else:
+            mapping_df = pd.concat([mapping_df, pd.DataFrame([extra])], ignore_index=True)
+
+    mapping_df.sort_values("door_name", inplace=True)
+
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     mapping_df.to_csv(OUTPUT_FILE, index=False)
 

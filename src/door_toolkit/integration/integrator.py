@@ -309,16 +309,84 @@ class DoORFlyWireIntegrator:
         connectivity_subset.index = door_names_index
         connectivity_subset.columns = door_names_columns
 
+        # ========================================================================
+        # DUPLICATE RECEPTOR DIAGNOSTIC BLOCK
+        # ========================================================================
         if connectivity_subset.index.duplicated().any():
             logger.warning(
-                "Duplicate receptor indices detected after remapping; taking mean across duplicates."
+                "Duplicate receptor indices detected after remapping; analyzing root cause..."
             )
-            connectivity_subset = connectivity_subset.groupby(level=0).mean()
+
+            duplicated_receptors = connectivity_subset.index[
+                connectivity_subset.index.duplicated(keep=False)
+            ]
+            unique_duplicates = duplicated_receptors.unique()
+
+            logger.info("   %d receptors have duplicate entries:", len(unique_duplicates))
+
+            for receptor in unique_duplicates[:5]:
+                matching_glom = [
+                    (door_name, glom)
+                    for glom, door_name in self.flywire_to_door.items()
+                    if door_name == receptor
+                ]
+
+                receptor_rows = connectivity_subset.loc[receptor]
+
+                if isinstance(receptor_rows, pd.DataFrame):
+                    n_copies = len(receptor_rows)
+                    sample_values = receptor_rows.iloc[:, :3].values
+
+                    logger.info("   - %s: %d glomeruli variants", receptor, n_copies)
+                    logger.info("       FlyWire mappings: %s", matching_glom)
+                    logger.info("       Connectivity values (sample):")
+
+                    for i, row in enumerate(sample_values):
+                        logger.info("         Copy %d: %s", i + 1, row[:3])
+
+                    if n_copies > 1:
+                        first_row = receptor_rows.iloc[0]
+                        all_identical = all(
+                            receptor_rows.iloc[i].equals(first_row)
+                            for i in range(1, n_copies)
+                        )
+
+                        if all_identical:
+                            logger.warning(
+                                "       → TRUE DUPLICATE (identical values) - use .first() or .drop_duplicates()"
+                            )
+                        else:
+                            logger.warning(
+                                "       → BIOLOGICAL VARIANTS (different values) - use .max() or .sum()"
+                            )
+        # ========================================================================
+
+        if connectivity_subset.index.duplicated().any():
+            logger.warning(
+                "Duplicate receptor indices detected after remapping; taking MAX (strongest pathway)."
+            )
+
+            duplicated_count = connectivity_subset.index.duplicated().sum()
+            logger.info("   Aggregating %d duplicate rows using MAX", duplicated_count)
+
+            connectivity_subset = connectivity_subset.groupby(level=0, axis=0).max()
+
+            logger.info("   ✅ Aggregated to %d unique receptors", len(connectivity_subset))
+
         if connectivity_subset.columns.duplicated().any():
             logger.warning(
-                "Duplicate receptor columns detected after remapping; taking mean across duplicates."
+                "Duplicate receptor columns detected after remapping; taking MAX (strongest pathway)."
             )
-            connectivity_subset = connectivity_subset.T.groupby(level=0).mean().T
+
+            duplicated_count = connectivity_subset.columns.duplicated().sum()
+            logger.info("   Aggregating %d duplicate columns using MAX", duplicated_count)
+
+            connectivity_subset = connectivity_subset.T.groupby(level=0).max().T
+
+            logger.info(
+                "   ✅ Aggregated to %d unique receptors",
+                connectivity_subset.shape[1]
+            )
 
         logger.info(
             "✅ Created DoOR-indexed connectivity matrix: %s (%d receptors)",

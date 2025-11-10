@@ -741,6 +741,14 @@ pytest tests/test_encoder.py -v
 
 ---
 
+## Receptor Mapping References
+
+1. **Couto, A., et al. (2005)** "Molecular, Anatomical, and Functional Organization of the Drosophila Olfactory System." *Current Biology* 15(17): 1535-1547. DOI: 10.1016/j.cub.2005.07.034
+2. **Hallem, E. A. & Carlson, J. R. (2006)** "Coding of Odors by a Receptor Repertoire." *Cell* 125(1): 143-160. DOI: 10.1016/j.cell.2006.01.050
+3. **Silbering, A. F., et al. (2011)** "Complementary Function and Integrated Wiring of the Evolutionarily Distinct Drosophila Olfactory Subsystems." *Journal of Neuroscience* 31(38): 13357-13375. DOI: 10.1523/JNEUROSCI.2360-11.2011
+4. **Fishilevich, E. & Vosshall, L. B. (2005)** "Genetic and Functional Subdivision of the Drosophila Antennal Lobe." *Current Biology* 15(17): 1548-1553. DOI: 10.1016/j.cub.2005.07.066
+5. **Benton, R., et al. (2009)** "Variant Ionotropic Glutamate Receptors as Chemosensory Receptors in Drosophila." *Cell* 136(1): 149-162. DOI: 10.1016/j.cell.2008.12.001
+
 ## Citation
 
 If you use this toolkit in your research, please cite:

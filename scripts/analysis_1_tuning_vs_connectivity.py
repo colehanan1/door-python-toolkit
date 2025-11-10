@@ -199,22 +199,35 @@ def analyze_tuning_vs_connectivity(integrator, args):
                     'connectivity_strength': float(conn_val)
                 })
 
-    results_df = pd.DataFrame(results_list).sort_values(
+    if len(results_list) == 0:
+        logger.error(
+            f"\n❌ NO RECEPTOR PAIRS FOUND with connectivity ≥ {args.threshold} synapses\n"
+            f"   Threshold too high!\n"
+            f"   Try lowering --threshold (current: {args.threshold})\n"
+            f"   Typical values: 1, 5, 10, 20\n"
+        )
+        return None
+
+    results_df = pd.DataFrame(results_list)
+
+    required_cols = [
+        'receptor1',
+        'receptor2',
+        'tuning_correlation',
+        'connectivity_strength'
+    ]
+    missing_cols = [col for col in required_cols if col not in results_df.columns]
+    if missing_cols:
+        logger.error("Missing required columns: %s", missing_cols)
+        logger.error("Available columns: %s", results_df.columns.tolist())
+        return None
+
+    results_df = results_df.sort_values(
         'connectivity_strength',
         ascending=False
     )
 
     logger.info(f"Found {len(results_df)} valid receptor pairs with connectivity > 0")
-
-    if len(results_df) == 0:
-        logger.error(
-            f"\n❌ CRITICAL: No connected receptor pairs found!\n"
-            f"   Threshold: {args.threshold} synapses\n"
-            f"   Pathway type: {args.pathway_type}\n"
-            f"   Shared receptors: {len(shared_receptors)}\n\n"
-            f"   💡 Try lowering --threshold or using --pathway-type all"
-        )
-        return None
 
     if len(results_df) < 2:
         logger.error(
@@ -575,6 +588,10 @@ def main():
 
     # Run analysis
     results = analyze_tuning_vs_connectivity(integrator, args)
+
+    if results is None:
+        logger.error("Analysis failed - no data to plot. Exiting.")
+        sys.exit(1)
 
     print()
     print("=" * 70)

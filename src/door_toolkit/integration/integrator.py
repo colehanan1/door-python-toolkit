@@ -311,14 +311,14 @@ class DoORFlyWireIntegrator:
 
         if connectivity_subset.index.duplicated().any():
             logger.warning(
-                "Duplicate receptor indices detected after remapping; aggregating by summation."
+                "Duplicate receptor indices detected after remapping; taking mean across duplicates."
             )
-            connectivity_subset = connectivity_subset.groupby(level=0).sum()
+            connectivity_subset = connectivity_subset.groupby(level=0).mean()
         if connectivity_subset.columns.duplicated().any():
             logger.warning(
-                "Duplicate receptor columns detected after remapping; aggregating by summation."
+                "Duplicate receptor columns detected after remapping; taking mean across duplicates."
             )
-            connectivity_subset = connectivity_subset.groupby(level=0, axis=1).sum()
+            connectivity_subset = connectivity_subset.T.groupby(level=0).mean().T
 
         logger.info(
             "✅ Created DoOR-indexed connectivity matrix: %s (%d receptors)",

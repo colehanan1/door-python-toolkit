@@ -68,6 +68,11 @@ class SingleORNAnalysis:
     def get_targets_by_glomerulus(self) -> Dict[str, int]:
         """Count target neurons by glomerulus."""
         df = self.to_dataframe()
+
+        # Handle empty dataframe
+        if df.empty or "level2_category" not in df.columns:
+            return {}
+
         target_orns = df[df["level2_category"] == "ORN"]
 
         if len(target_orns) == 0:
@@ -78,6 +83,11 @@ class SingleORNAnalysis:
     def get_strongest_pathways(self, n: int = 10) -> pd.DataFrame:
         """Get the N strongest pathways by synapse count."""
         df = self.to_dataframe()
+
+        # Handle empty dataframe or missing column
+        if df.empty or "synapse_count_step2" not in df.columns:
+            return pd.DataFrame()
+
         return df.nlargest(n, "synapse_count_step2")
 
     def summary(self) -> str:

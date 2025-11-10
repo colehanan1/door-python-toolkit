@@ -253,6 +253,11 @@ Map DoOR receptor data to FlyWire neural connectivity and community labels.
 - Generate 3D spatial activation maps
 - Export mappings in JSON/CSV formats
 
+#### Namespace Translation & Diagnostics
+
+- `DoORFlyWireIntegrator.get_connectivity_matrix_door_indexed()` translates FlyWire glomerulus labels (e.g., `ORN_DL5`) into DoOR receptor names (`Or7a`) so tuning and connectivity matrices share the same index before statistical analysis.
+- `scripts/analysis_1_tuning_vs_connectivity.py` now logs detailed overlap diagnostics and generates a diagnostic report if insufficient overlapping receptors are found, making namespace issues easy to detect.
+
 ### Python API
 
 ```python

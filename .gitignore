@@ -150,3 +150,6 @@ data/
 helper-code/
 
 output/
+behavioral_prediction_results/
+
+tests/

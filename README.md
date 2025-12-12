@@ -343,12 +343,77 @@ generator = BlockingExperimentGenerator("door_cache")
 protocol = generator.generate_experiment_1_protocol()  # Single-unit veto
 protocol.export_json("experiment_protocol.json")
 
-# Behavioral prediction
+# Behavioral prediction (heuristic)
 predictor = BehavioralPredictor("door_cache")
 prediction = predictor.predict_behavior("hexanol")
 print(f"Valence: {prediction.predicted_valence}")
 print(f"Confidence: {prediction.confidence:.2%}")
+
+# LASSO behavioral prediction (data-driven)
+from door_toolkit.pathways import LassoBehavioralPredictor
+
+lasso_predictor = LassoBehavioralPredictor(
+    doorcache_path="door_cache",
+    behavior_csv_path="reaction_rates_summary.csv"
+)
+
+# Fit model for optogenetic condition
+results = lasso_predictor.fit_behavior("opto_hex")
+print(f"R² = {results.cv_r2_score:.3f}")
+print(f"Selected {results.n_receptors_selected} receptors")
+
+# Get top predictive receptors
+for receptor, weight in results.get_top_receptors(5):
+    print(f"  {receptor}: {weight:.4f}")
+
+# Generate plots
+results.plot_predictions(save_to="opto_hex_predictions.png")
+results.plot_receptors(save_to="opto_hex_receptors.png")
+
+# Export results
+results.export_csv("opto_hex_results.csv")
+results.export_json("opto_hex_model.json")
+
+# Compare multiple conditions
+comparison = lasso_predictor.compare_conditions(
+    conditions=["opto_hex", "opto_EB", "opto_benz_1"],
+    plot=True,
+    save_dir="comparison_results"
+)
 ```
+
+### LASSO Behavioral Prediction
+
+The `LassoBehavioralPredictor` uses sparse regression (LASSO) to identify minimal receptor circuits that predict behavioral responses from optogenetic manipulation experiments:
+
+**Features:**
+- Automatic odorant name matching between behavioral data and DoOR
+- Cross-validated LASSO regression with automatic λ selection
+- Sparse receptor circuit identification (typically 3-10 receptors)
+- Multiple prediction modes: test odorant, trained odorant, or interaction features
+- Visualization: predicted vs actual PER, receptor importance rankings
+- Export to CSV/JSON for downstream analysis
+
+**Workflow:**
+1. Load optogenetic behavioral data (PER responses)
+2. Match odorant names to DoOR receptor profiles
+3. Fit LASSO models with cross-validation
+4. Extract sparse receptor weights
+5. Visualize and export results
+
+**Example dataset format** (`reaction_rates_summary.csv`):
+```
+dataset,3-Octonol,Benzaldehyde,Ethyl_Butyrate,Hexanol,Linalool
+opto_hex,0.25,0.00,0.19,0.69,0.19
+opto_EB,0.13,0.00,0.22,0.20,0.00
+opto_benz_1,0.25,0.02,0.44,0.59,0.12
+```
+
+**Biological Interpretation:**
+- Positive weights → receptors associated with higher PER
+- Negative weights → receptors associated with lower PER (potential inhibition)
+- Zero weights → receptors excluded by LASSO (not predictive)
+- Sparse circuits (3-7 receptors) suggest minimal testable hypotheses
 
 ### CLI Usage
 
@@ -625,6 +690,7 @@ Complete working examples are available in the `examples/` directory:
 - `examples/advanced/flywire_integration_example.py` - FlyWire mapping
 - `examples/advanced/pathway_analysis_example.py` - Pathway tracing
 - `examples/advanced/neural_preprocessing_example.py` - Neural network prep
+- `examples/lasso_behavioral_prediction_demo.py` - LASSO regression for behavioral prediction
 
 ### Running Examples
 

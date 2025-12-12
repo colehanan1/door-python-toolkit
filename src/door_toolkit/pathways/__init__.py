@@ -28,7 +28,12 @@ from door_toolkit.pathways.blocking_experiments import (
     BlockingExperimentGenerator,
     ExperimentProtocol,
 )
-from door_toolkit.pathways.behavioral_prediction import BehavioralPredictor
+from door_toolkit.pathways.behavioral_prediction import (
+    BehavioralPredictor,
+    LassoBehavioralPredictor,
+    BehaviorModelResults,
+    BehaviorPrediction,
+)
 
 __all__ = [
     "PathwayAnalyzer",
@@ -36,4 +41,7 @@ __all__ = [
     "BlockingExperimentGenerator",
     "ExperimentProtocol",
     "BehavioralPredictor",
+    "LassoBehavioralPredictor",
+    "BehaviorModelResults",
+    "BehaviorPrediction",
 ]

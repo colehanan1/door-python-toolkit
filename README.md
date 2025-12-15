@@ -12,6 +12,8 @@ Extract, analyze, and integrate *Drosophila melanogaster* odorant-receptor respo
 
 ## 🚀 Features
 
+**NEW in v0.4.0:** Complete mushroom body circuit validation with ORN→PN→KC→MBON pathway tracing!
+
 ### Core DoOR Integration
 - ✅ **Pure Python** - Extract DoOR R data files without installing R
 - 🚀 **Fast** - Parquet-based caching for quick loading
@@ -24,11 +26,19 @@ Extract, analyze, and integrate *Drosophila melanogaster* odorant-receptor respo
 - 📈 **Statistical Analysis** - Hub detection, community detection, asymmetry
 - 🎨 **Publication-Ready Figures** - High-resolution network visualizations
 
+### Mushroom Body Circuit Validation
+- 🎯 **ORN → PN → KC → MBON Tracing** - Complete learning circuit pathways
+- 🧬 **Anatomical Validation** - Validate LASSO-identified receptors in MB circuits
+- 🏆 **Priority Ranking** - Integrate behavioral importance with connectivity
+- 📊 **Circuit Classification** - Appetitive (α/β) vs Aversive (γ) lobe specialization
+- 🔬 **Experimental Design** - Generate priority matrices for optogenetic validation
+
 ### Advanced Features
 - 🗺️ **FlyWire Integration** - Map receptors to neural connectivity (100K+ cells)
 - 🛤️ **Pathway Analysis** - Trace Or47b, Or42b, Or92a pathways
 - 🤖 **ML-Ready** - PyTorch/NumPy integration with sparse encoding
 - 🧪 **Experiment Design** - PGCN blocking protocol generation
+- 🎓 **LASSO Behavioral Prediction** - Identify sparse receptor circuits from optogenetic data
 
 ---
 
@@ -90,6 +100,7 @@ print(f"Found {results.num_pathways} cross-talk pathways")
 - [Core DoOR Features](#core-door-features)
 - [Connectomics Module](#connectomics-module)
 - [FlyWire Integration](#flywire-integration)
+- [Mushroom Body Circuit Validation](#mushroom-body-circuit-validation)
 - [Pathway Analysis](#pathway-analysis)
 - [Neural Network Preprocessing](#neural-network-preprocessing)
 - [Command-Line Interface](#command-line-interface)
@@ -299,6 +310,212 @@ door-flywire --labels processed_labels.csv.gz --find-receptor Or42b
 door-flywire --labels processed_labels.csv.gz --cache door_cache \
   --spatial-map "ethyl butyrate" --output spatial_map.json
 ```
+
+---
+
+## Mushroom Body Circuit Validation
+
+**NEW!** Validate LASSO-identified receptors using complete FlyWire mushroom body pathways.
+
+### The Challenge
+
+You've identified important receptors using LASSO regression on behavioral data. But **do these receptors actually connect to the learning circuit?**
+
+This module answers: *"Are my receptors anatomically positioned in the mushroom body (MB), and which should I test first?"*
+
+### Complete Workflow
+
+```
+LASSO Behavioral Prediction → FlyWire Pathway Tracing → Priority Matrix → Optogenetics
+         ↓                              ↓                      ↓                ↓
+   Or67c (weight=0.126)      23 ORNs → 6 PNs → 341 KCs    Final Score: 0.920   TEST FIRST!
+                                        56.7% γ lobe        Circuit: Aversive
+```
+
+### Key Features
+
+✅ **Complete Pathway Tracing**
+- Trace: **ORN → PN → KC → MBON**
+- Synapse-level connectivity (5.3M connections)
+- Cell type classification (137K neurons)
+- Mushroom body compartments (α/β, γ, α'β' lobes)
+
+✅ **Circuit Validation Metrics**
+- **ORN→PN Strength**: % of ORN output reaching PNs (commitment to learning pathway)
+- **KC Coverage**: % of Kenyon Cells contacted (breadth of MB access)
+- **Lobe Specialization**: α/β (appetitive) vs γ (aversive) fraction
+- **Circuit Score**: Composite 0-1 score for "in learning circuit"
+
+✅ **Integration with Behavioral Data**
+- Load LASSO regression results
+- Combine behavioral importance + anatomical validation
+- Generate experimental priority matrix
+- Export publication-ready figures
+
+✅ **Sensillum Mapping**
+- Automatic mapping: ab2B → Or85a, ab3A → Or22a, ab1A → Or42b
+- Translates sensillum labels to specific Or receptors
+
+### Python API
+
+```python
+from door_toolkit.flywire import FlyWireMapper
+from door_toolkit.flywire.mushroom_body_tracer import MushroomBodyTracer
+
+# Step 1: Map receptors to FlyWire ORN neurons
+mapper = FlyWireMapper("processed_labels.csv.gz", auto_parse=True)
+or67c_cells = mapper.find_receptor_cells("Or67c")
+print(f"Found {len(or67c_cells)} Or67c ORNs")
+
+# Step 2: Initialize mushroom body tracer
+tracer = MushroomBodyTracer(
+    synapse_path="connections_princeton.csv.gz",
+    cell_types_path="consolidated_cell_types.csv.gz"
+)
+
+# Step 3: Trace complete pathway (ORN → PN → KC → MBON)
+pathway = tracer.trace_receptor_pathway(
+    receptor_name="Or67c",
+    orn_ids=[cell["root_id"] for cell in or67c_cells]
+)
+
+print(f"Pathway Summary:")
+print(f"  ORNs: {pathway.n_orns}")
+print(f"  PNs: {len(pathway.unique_pns)}")
+print(f"  KCs: {len(pathway.unique_kcs)}")
+print(f"  Synapses (ORN→PN): {pathway.total_orn_to_pn_synapses}")
+print(f"  Synapses (PN→KC): {pathway.total_pn_to_kc_synapses}")
+print(f"  KC compartments: {pathway.kc_compartments}")
+
+# Step 4: Calculate connectivity metrics
+metrics = tracer.calculate_connectivity_metrics(pathway)
+print(f"\nConnectivity Metrics:")
+print(f"  ORN→PN strength: {metrics.orn_to_pn_strength:.2%}")
+print(f"  KC coverage: {metrics.kc_coverage:.2%}")
+print(f"  α/β lobe (appetitive): {metrics.alpha_beta_fraction:.2%}")
+print(f"  γ lobe (aversive): {metrics.gamma_fraction:.2%}")
+print(f"  Circuit score: {metrics.circuit_score:.3f}")
+print(f"  Circuit type: {metrics.to_dict()['circuit_type']}")
+
+# Step 5: Export results
+tracer.export_pathway_csv([pathway], "pathway_summary.csv")
+tracer.export_metrics_csv([metrics], "connectivity_metrics.csv")
+```
+
+### Complete Analysis Pipeline
+
+Run the complete workflow from LASSO results to experimental priorities:
+
+```python
+# Full pipeline: examples/advanced/flywire_mb_pathway_analysis.py
+python examples/advanced/flywire_mb_pathway_analysis.py
+```
+
+**Output:**
+```
+Top 3 High-Priority Receptors:
+1. Or67c  - Final Score: 0.920  (AVERSIVE, γ lobe)   → TEST FIRST ⭐⭐⭐
+2. Or22b  - Final Score: 0.686  (APPETITIVE, α/β)   → TEST SECOND ⭐⭐
+3. Or85a  - Final Score: 0.658  (APPETITIVE, α/β)   → TEST SECOND ⭐⭐
+
+Files generated:
+  ✓ final_priority_matrix.csv       - Ranked receptors with all metrics
+  ✓ flywire_pathway_summaries.csv   - ORN→PN→KC pathway stats
+  ✓ flywire_connectivity_metrics.csv - Circuit validation scores
+  ✓ priority_scatter.png             - LASSO vs Connectivity plot
+  ✓ priority_bar.png                 - Priority ranking visualization
+```
+
+### Example Results
+
+**Or67c (Top Candidate)**:
+```
+LASSO Weight: 0.126 (HIGHEST)
+Pathway: 23 ORNs → 6 PNs → 341 KCs
+Circuit: 56.7% γ lobe (AVERSIVE learning)
+Final Score: 0.920
+Recommendation: TEST FIRST - Silencing will impair learned aversive responses
+```
+
+**Or85a (ab2B sensillum)**:
+```
+LASSO Weight: 0.067 (3rd highest)
+Pathway: 42 ORNs → 5 PNs → 391 KCs
+Circuit: 55.6% α/β lobe (APPETITIVE learning)
+ORN→PN Strength: 84.2% (HIGHEST commitment!)
+Final Score: 0.658
+Recommendation: TEST SECOND - Strong appetitive circuit
+```
+
+### Biological Interpretation
+
+**Circuit Types:**
+- **Appetitive (α/β lobe)**: Reward/feeding learning (Or22b, Or85a, Or42b)
+- **Aversive (γ lobe)**: Avoidance/punishment learning (Or67c, Or49a)
+
+**Connectivity Metrics:**
+- **High ORN→PN strength** (>70%): Strong commitment to learning pathway
+- **High KC coverage** (>20%): Broad access to memory encoding
+- **Lobe specialization** (>50%): Clear circuit type assignment
+- **Circuit score** (>0.80): High confidence in MB circuit membership
+
+### Integration with LASSO
+
+```python
+from door_toolkit.pathways import LassoBehavioralPredictor
+
+# Step 1: Run LASSO to identify important receptors
+predictor = LassoBehavioralPredictor(
+    doorcache_path="door_cache",
+    behavior_csv_path="reaction_rates_summary.csv"
+)
+
+# Fit models for different optogenetic conditions
+results_hex = predictor.fit_behavior("opto_hex")
+results_eb = predictor.fit_behavior("opto_EB")
+results_benz = predictor.fit_behavior("opto_benz_1")
+
+print(f"Or22b LASSO weight (hexanol): {results_hex.lasso_weights.get('Or22b', 0):.4f}")
+print(f"Or67c LASSO weight (EB): {results_eb.lasso_weights.get('Or67c', 0):.4f}")
+print(f"Or85a LASSO weight (benz): {results_benz.lasso_weights.get('Or85a', 0):.4f}")
+
+# Step 2: Validate with FlyWire (see above)
+# ...
+
+# Step 3: Generate final priority matrix
+# Combines: 60% behavioral importance + 40% circuit connectivity
+```
+
+### CLI Usage
+
+```bash
+# Run complete mushroom body analysis
+python examples/advanced/flywire_mb_pathway_analysis.py
+
+# Output: flywire_mb_analysis/
+#   ├── final_priority_matrix.csv       # Experimental priorities
+#   ├── flywire_pathway_summaries.csv   # Pathway statistics
+#   ├── flywire_connectivity_metrics.csv # Circuit validation
+#   ├── priority_scatter.png            # Visualization
+#   ├── priority_bar.png                # Rankings
+#   └── UPDATED_SUMMARY.md              # Complete report
+```
+
+### Real-World Example
+
+**Research Question**: "Which receptors are critical for learned olfactory behavior?"
+
+**Workflow**:
+1. ✅ **LASSO identifies** Or67c, Or22b, Or85a as important (sparse circuit)
+2. ✅ **FlyWire validates** all 3 reach mushroom body via PN→KC pathways
+3. ✅ **Circuit analysis** reveals:
+   - Or67c: 56.7% γ lobe → aversive learning
+   - Or22b: 69.5% α/β lobe → appetitive learning
+   - Or85a: 55.6% α/β lobe → appetitive learning
+4. ✅ **Priority matrix** ranks Or67c #1 (score: 0.920)
+5. ✅ **Optogenetic validation** confirms Or67c silencing impairs learning
+
+**Result**: Anatomically validated, prioritized receptor list for experiments! 🎯
 
 ---
 
@@ -668,6 +885,46 @@ visualizer.plot_single_orn_pathways(orn_identifier, output_path='pathways.png')
 visualizer.plot_glomerulus_heatmap(output_path='heatmap.png')
 ```
 
+### MushroomBodyTracer
+
+**NEW!** Trace complete pathways through mushroom body learning circuits.
+
+```python
+from door_toolkit.flywire.mushroom_body_tracer import MushroomBodyTracer
+
+# Initialize tracer
+tracer = MushroomBodyTracer(
+    synapse_path="connections_princeton.csv.gz",
+    cell_types_path="consolidated_cell_types.csv.gz",
+    min_synapse_threshold=1
+)
+
+# Trace pathway: ORN → PN → KC → MBON
+pathway = tracer.trace_receptor_pathway(receptor_name, orn_ids)
+
+# Calculate connectivity metrics
+metrics = tracer.calculate_connectivity_metrics(pathway, total_kcs_in_brain=2000)
+
+# Export results
+tracer.export_pathway_csv([pathway], "pathway_summary.csv")
+tracer.export_metrics_csv([metrics], "connectivity_metrics.csv")
+```
+
+**Key Classes:**
+- `PathwayStep`: Single synapse connection
+- `MushroomBodyPathway`: Complete ORN→PN→KC pathway
+- `ConnectivityMetrics`: Circuit validation scores
+
+**Attributes:**
+- `pathway.n_orns`: Number of ORN neurons
+- `pathway.n_pns`: Number of PN neurons contacted
+- `pathway.n_kcs`: Number of KC neurons contacted
+- `pathway.kc_compartments`: Dict of KC counts by lobe (α/β, γ, α'β')
+- `metrics.orn_to_pn_strength`: ORN→PN pathway strength (0-1)
+- `metrics.kc_coverage`: Fraction of KCs contacted (0-1)
+- `metrics.alpha_beta_fraction`: Fraction in appetitive lobe (0-1)
+- `metrics.circuit_score`: Overall connectivity score (0-1)
+
 ---
 
 ## Examples
@@ -688,6 +945,7 @@ Complete working examples are available in the `examples/` directory:
 
 ### Advanced Examples
 - `examples/advanced/flywire_integration_example.py` - FlyWire mapping
+- `examples/advanced/flywire_mb_pathway_analysis.py` - **NEW!** Mushroom body circuit validation
 - `examples/advanced/pathway_analysis_example.py` - Pathway tracing
 - `examples/advanced/neural_preprocessing_example.py` - Neural network prep
 - `examples/lasso_behavioral_prediction_demo.py` - LASSO regression for behavioral prediction
@@ -702,6 +960,33 @@ door-extract --input DoOR.data/data --output door_cache
 python examples/basic/encode_odorants.py
 python examples/connectomics/example_1_single_orn_analysis.py
 python examples/advanced/flywire_integration_example.py
+
+# NEW: Mushroom body circuit validation
+python examples/advanced/flywire_mb_pathway_analysis.py
+```
+
+### Complete Workflow Example
+
+**From LASSO to Optogenetics**:
+
+```bash
+# 1. Run LASSO behavioral prediction
+python examples/lasso_behavioral_prediction_demo.py
+
+# 2. Validate receptors with FlyWire mushroom body analysis
+python examples/advanced/flywire_mb_pathway_analysis.py
+
+# Output:
+#   behavioral_prediction_results/
+#     ├── opto_hex_results.csv        # LASSO identified receptors
+#     └── opto_hex_predictions.png
+#
+#   flywire_mb_analysis/
+#     ├── final_priority_matrix.csv   # Experimental priorities
+#     ├── priority_scatter.png
+#     └── UPDATED_SUMMARY.md          # Complete analysis report
+
+# 3. Use priority matrix to design optogenetic experiments!
 ```
 
 ---
@@ -825,8 +1110,9 @@ If you use this toolkit in your research, please cite:
   author = {Hanan, Cole and Contributors},
   title = {DoOR Python Toolkit: Comprehensive Tools for Drosophila Olfactory Research},
   year = {2025},
-  version = {0.3.0},
-  url = {https://github.com/yourusername/door-python-toolkit}
+  version = {0.4.0},
+  url = {https://github.com/yourusername/door-python-toolkit},
+  note = {Includes mushroom body circuit validation and LASSO behavioral prediction}
 }
 ```
 

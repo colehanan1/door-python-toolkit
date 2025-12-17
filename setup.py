@@ -9,8 +9,8 @@ README = PROJECT_ROOT / "README.md"
 
 setup(
     name="door-python-toolkit",
-    version="0.2.0",
-    description="Pure Python tooling for working with the DoOR (Database of Odorant Responses) dataset.",
+    version="1.0.0",
+    description="Comprehensive Python toolkit for Drosophila olfactory research: DoOR database integration, FlyWire connectomics, mushroom body circuit validation, and LASSO behavioral prediction.",
     long_description=README.read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     author="Cole Hanan",
@@ -34,8 +34,12 @@ setup(
         "door",
         "flywire",
         "connectomics",
+        "mushroom-body",
         "neural-network",
         "machine-learning",
+        "behavioral-prediction",
+        "lasso",
+        "optogenetics",
     ],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
@@ -85,7 +89,7 @@ setup(
         ],
     },
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",

@@ -12,7 +12,7 @@ Extract, analyze, and integrate *Drosophila melanogaster* odorant-receptor respo
 
 ## 🚀 Features
 
-**NEW in v0.4.0:** Complete mushroom body circuit validation with ORN→PN→KC→MBON pathway tracing!
+**NEW in v1.0.0:** Complete mushroom body circuit validation with ORN→PN→KC→MBON pathway tracing! 🎉
 
 ### Core DoOR Integration
 - ✅ **Pure Python** - Extract DoOR R data files without installing R
@@ -1110,9 +1110,9 @@ If you use this toolkit in your research, please cite:
   author = {Hanan, Cole and Contributors},
   title = {DoOR Python Toolkit: Comprehensive Tools for Drosophila Olfactory Research},
   year = {2025},
-  version = {0.4.0},
-  url = {https://github.com/yourusername/door-python-toolkit},
-  note = {Includes mushroom body circuit validation and LASSO behavioral prediction}
+  version = {1.0.0},
+  url = {https://github.com/colehanan1/door-python-toolkit},
+  note = {Production-ready toolkit with mushroom body circuit validation and LASSO behavioral prediction}
 }
 ```
 

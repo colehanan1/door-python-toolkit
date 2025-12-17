@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "DoOR-python-toolkit"
-version = "0.3.0"
-description = "Python toolkit for working with the DoOR (Database of Odorant Responses) database and FlyWire connectomics"
+version = "1.0.0"
+description = "Comprehensive Python toolkit for Drosophila olfactory research: DoOR database integration, FlyWire connectomics, mushroom body circuit validation, and LASSO behavioral prediction."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
@@ -22,11 +22,15 @@ keywords = [
     "bioinformatics",
     "flywire",
     "connectomics",
+    "mushroom-body",
     "neural-network",
     "machine-learning",
+    "behavioral-prediction",
+    "lasso",
+    "optogenetics",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",

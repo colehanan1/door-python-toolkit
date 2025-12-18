@@ -160,3 +160,7 @@ output/
 behavioral_prediction_results/
 
 flywire_mb_analysis/
+outputs/
+
+.claude/
+

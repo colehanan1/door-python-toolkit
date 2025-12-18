@@ -1,0 +1,5 @@
+door_name,flywire_glomerulus,source_name,source_year,source_url_or_doi,evidence_note,confidence,is_ambiguous
+Or10a,ORN_DL1,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"Override: legacy toolkit CSV mapped Or10a to VC3l; DoOR.mappings assigns glomerulus DL1 (ab1D).",high,No
+Ir64a.DC4,ORN_DC4,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"Override: enforce dotted-suffix consistency (Ir64a.DC4 → DC4) and FlyWire ORN_ prefix.",high,No
+Ir64a.DP1m,ORN_DP1m,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"Override: enforce dotted-suffix consistency (Ir64a.DP1m → DP1m) and FlyWire ORN_ prefix.",high,No
+Or22b,ORN_DM2,"DoOR 2.0 receptor→glomerulus mapping (Münch & Galizia 2016)",2016,10.1038/srep21841,"Mapped at glomerulus level (DM2). Note: FlyWire ORN_ labels are glomerulus-level; Or22a/Or22b gene-level distinction is not captured in ORN_DM2. Optional strict single-cell mode can exclude Or22b as sensitivity analysis.",medium,No

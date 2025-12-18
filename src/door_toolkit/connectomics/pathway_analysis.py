@@ -19,6 +19,7 @@ from pathlib import Path
 import logging
 
 from door_toolkit.connectomics.network_builder import CrossTalkNetwork
+from door_toolkit.integration.orn_identifier import resolve_glomerulus
 
 logger = logging.getLogger(__name__)
 
@@ -229,20 +230,38 @@ def analyze_single_orn(
     """
     Analyze all pathways from a single ORN or glomerulus.
 
+    The ORN identifier will be automatically resolved to match available glomeruli
+    in the network. Supports various formats like "DL3", "ORN_DL3", "Ir31a", etc.
+
     Args:
         network: CrossTalkNetwork instance
-        orn_identifier: Either ORN root_id or glomerulus name
+        orn_identifier: Either ORN root_id (int) or glomerulus name (str).
+                       Glomerulus names are automatically normalized (e.g., "DL3" → "ORN_DL3")
         by_glomerulus: If True, analyze entire glomerulus
 
     Returns:
         SingleORNAnalysis results object
 
+    Notes:
+        Identifier resolution is best-effort by default; unknown inputs yield empty
+        pathway results rather than raising.
+
     Example:
         >>> network = CrossTalkNetwork.from_csv('pathways.csv')
+        >>> # All of these work:
         >>> results = analyze_single_orn(network, 'ORN_DL5', by_glomerulus=True)
+        >>> results = analyze_single_orn(network, 'DL5', by_glomerulus=True)
+        >>> results = analyze_single_orn(network, 'Ir31a', by_glomerulus=True)
         >>> print(results.summary())
         >>> df = results.to_dataframe()
     """
+    # Best-effort identifier resolution (do not hard-fail on unknown inputs).
+    if by_glomerulus and isinstance(orn_identifier, str):
+        try:
+            orn_identifier = resolve_glomerulus(orn_identifier, network, strict=False)
+        except ValueError:
+            pass
+
     logger.info(f"Analyzing {'glomerulus' if by_glomerulus else 'ORN'}: {orn_identifier}")
 
     # Get all pathways
@@ -331,11 +350,20 @@ def compare_orn_pair(
     """
     Compare cross-talk between two ORNs or glomeruli.
 
+    Both ORN identifiers will be automatically resolved to match available glomeruli
+    in the network. Supports various formats like "DL3", "ORN_DL3", "Ir31a", etc.
+
     Args:
         network: CrossTalkNetwork instance
-        orn1: First ORN root_id or glomerulus name
-        orn2: Second ORN root_id or glomerulus name
+        orn1: First ORN root_id (int) or glomerulus name (str).
+              Glomerulus names are automatically normalized
+        orn2: Second ORN root_id (int) or glomerulus name (str).
+              Glomerulus names are automatically normalized
         by_glomerulus: If True, compare glomeruli
+
+    Notes:
+        Identifier resolution is best-effort by default; unknown inputs yield empty
+        comparison results rather than raising.
 
     Returns:
         ORNPairComparison results object
@@ -343,9 +371,23 @@ def compare_orn_pair(
     Example:
         >>> network = CrossTalkNetwork.from_csv('pathways.csv')
         >>> comparison = compare_orn_pair(network, 'ORN_DL5', 'ORN_VA1v')
+        >>> # Also works with informal names:
+        >>> comparison = compare_orn_pair(network, 'DL5', 'VA1v')
         >>> print(comparison.summary())
         >>> print(f"Asymmetry: {comparison.get_asymmetry_ratio():.3f}")
     """
+    # Best-effort identifier resolution (do not hard-fail on unknown inputs).
+    if by_glomerulus and isinstance(orn1, str):
+        try:
+            orn1 = resolve_glomerulus(orn1, network, strict=False)
+        except ValueError:
+            pass
+    if by_glomerulus and isinstance(orn2, str):
+        try:
+            orn2 = resolve_glomerulus(orn2, network, strict=False)
+        except ValueError:
+            pass
+
     logger.info(f"Comparing {orn1} vs {orn2}")
 
     # Get pathways in both directions
@@ -414,12 +456,21 @@ def find_pathways(
     """
     Find all pathways between source and target neurons/glomeruli.
 
+    Both source and target identifiers will be automatically resolved to match
+    available glomeruli in the network when by_glomerulus=True.
+
     Args:
         network: CrossTalkNetwork instance
-        source: Source ORN root_id or glomerulus name
-        target: Target ORN root_id or glomerulus name
+        source: Source ORN root_id (int) or glomerulus name (str).
+                Glomerulus names are automatically normalized
+        target: Target ORN root_id (int) or glomerulus name (str).
+                Glomerulus names are automatically normalized
         by_glomerulus: If True, search at glomerulus level
         max_pathways: Maximum number of pathways to return (None = all)
+
+    Notes:
+        Identifier resolution is best-effort by default; unknown inputs yield empty
+        pathway results rather than raising.
 
     Returns:
         Dictionary with pathway analysis results
@@ -427,10 +478,24 @@ def find_pathways(
     Example:
         >>> network = CrossTalkNetwork.from_csv('pathways.csv')
         >>> results = find_pathways(network, 'ORN_DL5', 'ORN_VA1v', by_glomerulus=True)
+        >>> # Also works with informal names:
+        >>> results = find_pathways(network, 'DL5', 'VA1v', by_glomerulus=True)
         >>> print(f"Found {results['num_pathways']} pathways")
         >>> for p in results['pathways'][:5]:
         ...     print(f"{p['orn_glomerulus']} → {p['level1_type']} → {p['level2_glomerulus']}")
     """
+    # Best-effort identifier resolution (do not hard-fail on unknown inputs).
+    if by_glomerulus and isinstance(source, str):
+        try:
+            source = resolve_glomerulus(source, network, strict=False)
+        except ValueError:
+            pass
+    if by_glomerulus and isinstance(target, str):
+        try:
+            target = resolve_glomerulus(target, network, strict=False)
+        except ValueError:
+            pass
+
     logger.info(f"Finding pathways from {source} to {target}")
 
     pathways = network.get_pathways_between_orns(source, target, by_glomerulus)

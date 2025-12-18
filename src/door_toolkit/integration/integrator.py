@@ -20,6 +20,13 @@ from door_toolkit.integration.door_utils import (
     calculate_lifetime_kurtosis,
     map_door_to_flywire
 )
+from door_toolkit.integration.mapping_accounting import (
+    compute_mapping_stats,
+    log_mapping_stats,
+    format_mapping_summary,
+    is_larval_receptor,
+)
+from door_toolkit.integration.receptor_identifier import normalize_receptor_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +60,8 @@ class DoORFlyWireIntegrator:
         self,
         door_cache: str = "door_cache",
         connectomics_data: str = "data/interglomerular_crosstalk_pathways.csv",
-        mapping_path: Optional[str] = None
+        mapping_path: Optional[str] = None,
+        strict_single_cell_annotation: bool = False,
     ):
         """
         Initialize integrator.
@@ -62,8 +70,12 @@ class DoORFlyWireIntegrator:
             door_cache: Path to DoOR cache directory
             connectomics_data: Path to FlyWire connectomics CSV
             mapping_path: Path to receptor mapping CSV (optional)
+            strict_single_cell_annotation: If True, exclude mappings that require
+                glomerulus-level interpretation for gene-level claims (currently
+                `Or22b → ORN_DM2` is excluded as a sensitivity analysis).
         """
         logger.info("Initializing DoOR-FlyWire integrator...")
+        self.strict_single_cell_annotation = strict_single_cell_annotation
 
         # Load DoOR encoder
         logger.info("Loading DoOR encoder...")
@@ -76,24 +88,23 @@ class DoORFlyWireIntegrator:
         # Load receptor mapping
         if mapping_path is None:
             base_dir = Path(__file__).resolve().parents[3] / "data" / "mappings"
-            complete_path = base_dir / "door_to_flywire_mapping_complete.csv"
-            legacy_path = base_dir / "door_to_flywire_mapping.csv"
+            authoritative_path = base_dir / "door_to_flywire_mapping.csv"
+            deprecated_complete_path = base_dir / "door_to_flywire_mapping_complete.csv"
 
-            if complete_path.exists():
-                mapping_path = str(complete_path)
-                logger.info("Using complete receptor mapping (%s)", complete_path)
-            elif legacy_path.exists():
-                mapping_path = str(legacy_path)
+            if authoritative_path.exists():
+                mapping_path = str(authoritative_path)
+                logger.info("Using authoritative DoOR→FlyWire mapping (%s)", authoritative_path)
+            elif deprecated_complete_path.exists():
+                mapping_path = str(deprecated_complete_path)
                 logger.warning(
-                    "Using legacy receptor mapping (%s). "
-                    "Run scripts/generate_complete_receptor_mapping.py for expanded coverage.",
-                    legacy_path,
+                    "Using deprecated mapping file (%s). "
+                    "Regenerate authoritative mapping with scripts/generate_complete_receptor_mapping.py.",
+                    deprecated_complete_path,
                 )
             else:
                 logger.error(
-                    "No receptor mapping file found. Expected %s or %s",
-                    complete_path,
-                    legacy_path,
+                    "No receptor mapping file found. Expected %s",
+                    authoritative_path,
                 )
                 mapping_path = None
 
@@ -125,26 +136,119 @@ class DoORFlyWireIntegrator:
         logger.info("Integration initialization complete!")
         logger.info(f"  DoOR: {self.door_matrix.shape[0]} receptors × {self.door_matrix.shape[1]} odorants")
         logger.info(f"  FlyWire: {len(self.network.data.glomeruli)} glomeruli, {len(self.network.data.pathways)} pathways")
-        logger.info(f"  Mapped: {len(self.door_to_flywire)} receptors")
+        logger.info(
+            f"  Integration: {self.mapping_stats['n_receptors_mapped']} receptors → "
+            f"{self.mapping_stats['n_unique_glomeruli_from_mapped_receptors']} unique glomeruli"
+        )
 
     def _create_mappings(self):
         """Create bidirectional mapping dictionaries."""
-        # DoOR → FlyWire
+        # DoOR → FlyWire (normalization-safe)
+        # Key insight: receptor identifiers may differ only by capitalization across
+        # DoOR cache vs mapping CSV. Normalize both sides so mappings aren't missed.
         self.door_to_flywire = {}
         self.flywire_to_door = {}
 
-        for _, row in self.receptor_mapping.iterrows():
-            door_name = row['door_name']
-            flywire_name = row['flywire_glomerulus']
+        if "door_name" not in self.receptor_mapping.columns or "flywire_glomerulus" not in self.receptor_mapping.columns:
+            raise ValueError("Mapping CSV must contain columns: door_name, flywire_glomerulus")
 
-            self.door_to_flywire[door_name] = flywire_name
-            self.flywire_to_door[flywire_name] = door_name
+        normalized_mapping: Dict[str, str] = {}
+        ambiguous_keys: set[str] = set()
 
-        logger.info(f"Created bidirectional mappings for {len(self.door_to_flywire)} receptors")
+        grouped = self.receptor_mapping.groupby(
+            self.receptor_mapping["door_name"].map(normalize_receptor_identifier),
+            dropna=False,
+        )
 
-    def get_mapped_receptors(self) -> List[str]:
+        for key, grp in grouped:
+            if not key:
+                continue
+
+            targets = [
+                str(v).strip()
+                for v in grp["flywire_glomerulus"].tolist()
+                if v is not None and str(v).strip() != ""
+            ]
+            if not targets:
+                continue
+
+            distinct_targets = sorted(set(targets))
+
+            # If the mapping artifact explicitly marks ambiguity, skip it by default:
+            # adult-brain analyses require a single glomerulus label per DoOR unit.
+            if "is_ambiguous" in grp.columns:
+                flagged = grp["is_ambiguous"].astype(str).str.strip().str.lower().isin({"yes", "true", "1", "y"})
+                if bool(flagged.any()):
+                    ambiguous_keys.add(key)
+                    continue
+
+            if len(distinct_targets) != 1:
+                ambiguous_keys.add(key)
+                continue
+
+            target = distinct_targets[0]
+            if not target.startswith("ORN_"):
+                # Inventory definition: mapped means mapped to a valid FlyWire ORN_* label.
+                continue
+
+            normalized_mapping[key] = target
+
+        if ambiguous_keys:
+            preview = sorted(ambiguous_keys)[:10]
+            logger.info(
+                "Skipping %d ambiguous DoOR units (multi-glomerulus mappings): %s",
+                len(ambiguous_keys),
+                preview,
+            )
+
+        # Prefer DoOR-cache receptor naming for keys so downstream tuning matrices line up.
+        for receptor in self.door_matrix.index:
+            if self.strict_single_cell_annotation and normalize_receptor_identifier(receptor) == "OR22B":
+                # Or22a/Or22b both target DM2; FlyWire ORN_ labels are glomerulus-level.
+                # In strict mode we exclude Or22b to avoid gene-level over-interpretation.
+                continue
+            key = normalize_receptor_identifier(receptor)
+            flywire_name = normalized_mapping.get(key)
+            if flywire_name:
+                self.door_to_flywire[receptor] = flywire_name
+                # flywire_to_door is inherently many-to-one; keep first for determinism.
+                self.flywire_to_door.setdefault(flywire_name, receptor)
+
+        # Compute mapping statistics to prevent receptor/glomerulus count confusion
+        # NOTE: DoOR receptors map to FlyWire glomeruli (many-to-one possible)
+        self.mapping_stats = compute_mapping_stats(
+            self.door_to_flywire,
+            note="DoOR → FlyWire integration mapping",
+            adult_only=False  # DoOR includes all receptors
+        )
+
+        # Log mapping statistics with CLEAR distinction between receptors and glomeruli
+        logger.info("")  # Blank line for readability
+        logger.info("=" * 70)
+        logger.info("RECEPTOR → GLOMERULUS MAPPING STATISTICS")
+        logger.info("=" * 70)
+        logger.info(f"  Receptors mapped (DoOR): {self.mapping_stats['n_receptors_mapped']}")
+        logger.info(f"  Unique glomeruli (FlyWire): {self.mapping_stats['n_unique_glomeruli_from_mapped_receptors']}")
+
+        if self.mapping_stats['collision_count'] > 0:
+            logger.info(f"  Many-to-one collapses: {self.mapping_stats['collision_count']} glomeruli receive ≥2 receptors")
+            for collision_line in self.mapping_stats['collision_summary'][:5]:  # Show first 5
+                logger.info(f"    - {collision_line}")
+            if self.mapping_stats['collision_count'] > 5:
+                logger.info(f"    ... and {self.mapping_stats['collision_count'] - 5} more")
+        else:
+            logger.info("  1:1 mapping (no collisions)")
+
+        logger.info("=" * 70)
+        logger.info("")
+
+    def get_mapped_receptors(self, *, adult_only: bool = True) -> List[str]:
         """
         Get list of receptors that have both DoOR data and FlyWire connectivity.
+
+        By default, this returns **adult-only** receptors because FlyWire connectomics
+        data are adult brain annotations. Larval-only receptors are explicitly excluded
+        to prevent accidental inclusion in adult-only analyses.
 
         Returns:
             List of receptor names (DoOR nomenclature)
@@ -158,7 +262,21 @@ class DoORFlyWireIntegrator:
         # Intersection
         available = door_receptors & mapped_receptors
 
-        logger.info(f"Found {len(available)} receptors with both DoOR and FlyWire data")
+        if adult_only:
+            excluded_larval = sorted([r for r in available if is_larval_receptor(r)])
+            if excluded_larval:
+                logger.info(
+                    "Adult-only mode: excluding %d larval receptors: %s",
+                    len(excluded_larval),
+                    excluded_larval,
+                )
+            available = {r for r in available if not is_larval_receptor(r)}
+
+        logger.info(
+            "Found %d receptors with both DoOR and FlyWire data%s",
+            len(available),
+            " (adult-only)" if adult_only else "",
+        )
 
         return sorted(list(available))
 
@@ -180,7 +298,7 @@ class DoORFlyWireIntegrator:
             Connectivity matrix (glomeruli × glomeruli) with synapse counts
         """
         if receptor_list is None:
-            receptor_list = self.get_mapped_receptors()
+            receptor_list = self.get_mapped_receptors(adult_only=True)
 
         # Map to FlyWire glomeruli
         glom_list = [self.door_to_flywire[r] for r in receptor_list if r in self.door_to_flywire]
@@ -483,9 +601,11 @@ class DoORFlyWireIntegrator:
             f"  Pathways: {len(self.network.data.pathways):,}",
             f"  Neurons: {len(self.network.data.neurons):,}",
             "",
-            f"Integration:",
-            f"  Mapped receptors: {len(mapped_receptors)}",
+            f"Receptor → Glomerulus Mapping:",
+            f"  Mapped receptors: {self.mapping_stats['n_receptors_mapped']}",
+            f"  Unique glomeruli: {self.mapping_stats['n_unique_glomeruli_from_mapped_receptors']}",
             f"  Coverage: {100 * len(mapped_receptors) / self.door_matrix.shape[0]:.1f}%",
+            f"  Collisions: {self.mapping_stats['collision_count']} glomeruli receive ≥2 receptors",
         ]
 
         return "\n".join(lines)

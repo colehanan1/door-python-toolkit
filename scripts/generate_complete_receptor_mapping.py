@@ -1,258 +1,147 @@
 #!/usr/bin/env python3
 """
-Generate a comprehensive DoOR receptor → FlyWire glomerulus mapping.
+Generate the authoritative DoOR → FlyWire ORN_<glomerulus> mapping artifact.
 
-Combines canonical receptor-to-glomerulus relationships from the literature
-with FlyWire naming conventions so that all key receptors (especially those
-with known strong connectivity) are available for Analysis 2.
+Output:
+- data/mappings/door_to_flywire_mapping.csv
+- data/mappings/door_to_flywire_mapping_stats.json
+
+This script is intended to be deterministic and publication-auditable:
+- Uses DoOR.mappings (DoOR.data v2.0.0) as the primary source where available.
+- Applies curated sensillum reference and manual override tables with explicit provenance.
+- Runs strict validations that raise on invalid targets, known mismatches, or conflicts.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Tuple, Dict
+import sys
 
 import pandas as pd
 
-STANDARD_MAPPING: List[Tuple[str, str, str]] = [
-    ("Or7a", "DL5", "ORN"),
-    ("Or10a", "VC3l", "ORN"),
-    ("Or13a", "DC4", "ORN"),
-    ("Or19a", "D", "ORN"),
-    ("Or22a", "DM2", "ORN"),
-    ("Or23a", "DM6", "ORN"),
-    ("Or33a", "VC1", "ORN"),
-    ("Or33b", "DC2", "ORN"),
-    ("Or35a", "VC2", "ORN"),
-    ("Or42a", "DM3", "ORN"),
-    ("Or42b", "DM4", "ORN"),
-    ("Or43a", "DM5", "ORN"),
-    ("Or43b", "VM2", "ORN"),
-    ("Or45a", "VC4", "ORN"),
-    ("Or45b", "VC3m", "ORN"),
-    ("Or47a", "VA1v", "ORN"),
-    ("Or47b", "VA1d", "ORN"),
-    ("Or49a", "VA3", "ORN"),
-    ("Or49b", "DC1", "ORN"),
-    ("Or56a", "DA1", "ORN"),
-    ("Or59a", "DM1", "ORN"),
-    ("Or59b", "DL4", "ORN"),
-    ("Or59c", "VA4", "ORN"),
-    ("Or65a", "DL1", "ORN"),
-    ("Or67a", "VA6", "ORN"),
-    ("Or67b", "DA2", "ORN"),
-    ("Or67c", "DA3", "ORN"),
-    ("Or67d", "DA1", "ORN"),
-    ("Or69a", "D", "ORN"),
-    ("Or71a", "DL2d", "ORN"),
-    ("Or74a", "DA4m", "ORN"),
-    ("Or82a", "VA3", "ORN"),
-    ("Or83c", "DC3", "ORN"),
-    ("Or85a", "DL3", "ORN"),
-    ("Or85b", "VM5v", "ORN"),
-    ("Or85c", "VM5d", "ORN"),
-    ("Or85d", "VM7d", "ORN"),
-    ("Or85e", "VM7v", "ORN"),
-    ("Or85f", "VL2a", "ORN"),
-    ("Or88a", "VA1lm", "ORN"),
-    ("Or92a", "VA7m", "ORN"),
-    ("Or98a", "VL2p", "ORN"),
-    ("Or98b", "VM3", "ORN"),
-    ("Ir75a", "DP1l", "ORN"),
-    ("Ir84a", "DP1m", "ORN"),
-    ("Gr21a.Gr63a", "V", "ORN"),
-    ("ac1", "ac1", "ORN"),
-    ("ac2", "ac2", "ORN"),
-    ("ac3A", "ac3A", "ORN"),
-    ("ac3B", "ac3B", "ORN"),
-    ("ab2B", "ab2B", "ORN"),
-    ("ab4B", "ab4B", "ORN"),
-]
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-EXTRA_MAPPINGS: List[Dict[str, str]] = [
-    {
-        "door_name": "Or9a",
-        "flywire_glomerulus": "VM4",
-        "cell_type": "ORN",
-        "source": "Couto et al. 2005; Fishilevich & Vosshall 2005",
-        "confidence": "high",
-        "notes": "Responds to hexanol and benzaldehyde",
-    },
-    {
-        "door_name": "Or30a",
-        "flywire_glomerulus": "DL2v",
-        "cell_type": "ORN",
-        "source": "Couto et al. 2005; Hallem & Carlson 2006",
-        "confidence": "high",
-        "notes": "Benzaldehyde-responsive",
-    },
-    {
-        "door_name": "Or33c",
-        "flywire_glomerulus": "VC2",
-        "cell_type": "ORN",
-        "source": "Hallem & Carlson 2006; Silbering et al. 2008",
-        "confidence": "high",
-        "notes": "Aromatic compounds",
-    },
-    {
-        "door_name": "Or2a",
-        "flywire_glomerulus": "DC4",
-        "cell_type": "ORN",
-        "source": "Couto et al. 2005; Dobritsa et al. 2003",
-        "confidence": "high",
-        "notes": "Antennal sensillum ab3A",
-    },
-    {
-        "door_name": "Or46a",
-        "flywire_glomerulus": "VA7l",
-        "cell_type": "ORN",
-        "source": "Couto et al. 2005",
-        "confidence": "high",
-        "notes": "Responds to esters",
-    },
-    {
-        "door_name": "Or56a",
-        "flywire_glomerulus": "DA1",
-        "cell_type": "ORN",
-        "source": "Couto et al. 2005; Hallem & Carlson 2006",
-        "confidence": "high",
-        "notes": "Geosmin receptor",
-    },
-    {
-        "door_name": "Or94a",
-        "flywire_glomerulus": "VA6",
-        "cell_type": "ORN",
-        "source": "Couto et al. 2005",
-        "confidence": "medium",
-        "notes": "Phenylacetaldehyde-sensitive",
-    },
-    {
-        "door_name": "Or94b",
-        "flywire_glomerulus": "VA7l",
-        "cell_type": "ORN",
-        "source": "Couto et al. 2005",
-        "confidence": "medium",
-        "notes": "Co-expressed with Or46a (variant)",
-    },
-    {
-        "door_name": "Ir76a",
-        "flywire_glomerulus": "DC1",
-        "cell_type": "ORN",
-        "source": "Silbering et al. 2011; Benton et al. 2009",
-        "confidence": "high",
-        "notes": "Ionotropic receptor for acids",
-    },
-    {
-        "door_name": "Ir64a",
-        "flywire_glomerulus": "DC4",
-        "cell_type": "ORN",
-        "source": "Silbering et al. 2011",
-        "confidence": "high",
-        "notes": "Ionotropic receptor (acids)",
-    },
-    {
-        "door_name": "Ir31a",
-        "flywire_glomerulus": "VC4",
-        "cell_type": "ORN",
-        "source": "Silbering et al. 2011",
-        "confidence": "high",
-        "notes": "Ionotropic receptor",
-    },
-    {
-        "door_name": "Gr10a",
-        "flywire_glomerulus": "V",
-        "cell_type": "GRN",
-        "source": "Kwon et al. 2007; Jones et al. 2007",
-        "confidence": "medium",
-        "notes": "Gustatory receptor (CO2-like)",
-    },
-    {
-        "door_name": "Gr10b",
-        "flywire_glomerulus": "V",
-        "cell_type": "GRN",
-        "source": "Kwon et al. 2007",
-        "confidence": "medium",
-        "notes": "Gustatory receptor",
-    },
-]
-
-OUTPUT_FILE = Path("data/mappings/door_to_flywire_mapping_complete.csv")
-DOOR_CACHE = Path("door_cache/response_matrix_norm.parquet")
+from door_toolkit.integration.door_to_flywire_mapping import (  # noqa: E402
+    build_authoritative_door_to_flywire_mapping,
+    default_paths,
+    load_door_mappings_full,
+    load_door_receptors_from_cache,
+)
+from door_toolkit.integration.mapping_accounting import (  # noqa: E402
+    compute_mapping_stats,
+    format_mapping_summary,
+    write_mapping_stats_json,
+)
 
 
-def normalize_glomerulus(glomerulus: str) -> str:
-    """Format FlyWire glomerulus names as ORN_<NAME> where applicable."""
-    clean = glomerulus.strip()
-    if not clean:
-        raise ValueError("Empty glomerulus name encountered")
-
-    lower = clean.lower()
-    if lower.startswith(("ac", "ab")):
-        return clean
-
-    if not clean.startswith("ORN_"):
-        clean = f"ORN_{clean}"
-    return clean
+def _load_optional_csv(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_csv(path)
 
 
 def main() -> None:
-    records = []
-    for door_name, glomerulus, cell_type in STANDARD_MAPPING:
-        records.append(
-            {
-                "door_name": door_name,
-                "flywire_glomerulus": normalize_glomerulus(glomerulus),
-                "cell_type": cell_type,
-                "source": "literature_standard",
-                "confidence": "medium",
-                "notes": "",
-            }
-        )
+    paths = default_paths()
 
-    mapping_df = pd.DataFrame(records)
+    matrix_path = paths["door_cache_matrix"]
+    if not matrix_path.exists():
+        raise FileNotFoundError(f"DoOR cache matrix not found: {matrix_path}")
 
-    for record in EXTRA_MAPPINGS:
-        extra = record.copy()
-        extra["flywire_glomerulus"] = normalize_glomerulus(extra["flywire_glomerulus"])
-        door_name = extra["door_name"]
-        mask = mapping_df["door_name"] == door_name
-        if mask.any():
-            for key, value in extra.items():
-                mapping_df.loc[mask, key] = value
-        else:
-            mapping_df = pd.concat([mapping_df, pd.DataFrame([extra])], ignore_index=True)
+    door_units = load_door_receptors_from_cache(matrix_path)
 
-    mapping_df.sort_values("door_name", inplace=True)
+    door_mappings_df = load_door_mappings_full()
+    manual_overrides_df = _load_optional_csv(paths["manual_overrides"])
+    sensillum_reference_df = _load_optional_csv(paths["sensillum_reference"])
 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    mapping_df.to_csv(OUTPUT_FILE, index=False)
+    mapping_df = build_authoritative_door_to_flywire_mapping(
+        door_units,
+        door_mappings_df=door_mappings_df,
+        manual_overrides_df=manual_overrides_df if not manual_overrides_df.empty else None,
+        sensillum_reference_df=sensillum_reference_df if not sensillum_reference_df.empty else None,
+    )
 
-    print(f"📊 Generated mapping for {len(mapping_df)} receptors")
-    print("\nSample mappings:")
-    print(mapping_df.head(10).to_string(index=False))
+    output_csv = paths["mapping_output"]
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    mapping_df.to_csv(output_csv, index=False)
 
-    print("\n🔥 Ultra-strong connectivity pairs:")
-    critical = mapping_df[mapping_df["door_name"].isin(["Or85f", "Or92a", "Or98a"])]
-    print(critical.to_string(index=False))
+    # ------------------------------------------------------------------
+    # Mapping statistics (unambiguous mappings only)
+    # ------------------------------------------------------------------
+    unambiguous = mapping_df[
+        mapping_df["flywire_glomerulus"].astype(str).str.strip().ne("")
+        & ~mapping_df["is_ambiguous"].astype(str).str.strip().str.lower().isin({"yes", "true", "1", "y"})
+    ].copy()
+    receptor_to_glom = dict(zip(unambiguous["door_name"].astype(str), unambiguous["flywire_glomerulus"].astype(str)))
 
-    if DOOR_CACHE.exists():
-        door_df = pd.read_parquet(DOOR_CACHE)
-        if door_df.shape[0] > door_df.shape[1]:
-            door_df = door_df.T
-        door_receptors = set(door_df.index)
-        mapped = set(mapping_df["door_name"])
-        missing = sorted(door_receptors - mapped)
-        if missing:
-            print(f"\n⚠️  Still unmapped DoOR receptors ({len(missing)} shown first 20):")
-            for rec in missing[:20]:
-                print(f"  • {rec}")
-        else:
-            print("\n✅ All DoOR receptors are mapped!")
-    else:
-        print(f"\n⚠️  DoOR cache not found at {DOOR_CACHE}; skipping coverage check.")
+    unmapped = sorted(set(door_units) - set(receptor_to_glom.keys()))
 
-    print(f"\n✅ Saved complete mapping to {OUTPUT_FILE}")
+    mapping_stats = compute_mapping_stats(
+        receptor_to_glom,
+        input_receptors=list(door_units),
+        unmapped_receptors=unmapped,
+        note="Authoritative DoOR → FlyWire ORN_<glomerulus> mapping (unambiguous rows only)",
+        adult_only=False,
+    )
+
+    stats_output = output_csv.parent / "door_to_flywire_mapping_stats.json"
+    write_mapping_stats_json(stats_output, mapping_stats)
+
+    # ------------------------------------------------------------------
+    # Console summary
+    # ------------------------------------------------------------------
+    ambiguous_units = sorted(
+        {
+            d
+            for d, grp in mapping_df.groupby("door_name")
+            if len(grp) > 1
+            and grp["flywire_glomerulus"].astype(str).str.strip().ne("").any()
+            and grp["is_ambiguous"].astype(str).str.strip().str.lower().isin({"yes", "true", "1", "y"}).all()
+        }
+    )
+
+    print("=" * 70)
+    print("AUTHORITATIVE DoOR → FlyWire MAPPING GENERATED")
+    print("=" * 70)
+    print(f"Output CSV: {output_csv}")
+    print(f"Stats JSON: {stats_output}")
+    print()
+    print(f"DoOR responding units: {len(door_units)}")
+    print(f"Unambiguous mapped units: {len(receptor_to_glom)}")
+    print(f"Ambiguous units (excluded from unambiguous stats): {len(ambiguous_units)}")
+    print(f"Unmapped units: {len(unmapped)}")
+    print()
+    print(f"  {format_mapping_summary(mapping_stats)}")
+    if mapping_stats["collision_count"] > 0:
+        print("  Many-to-one collapses (first 10):")
+        for line in mapping_stats["collision_summary"][:10]:
+            print(f"    - {line}")
+    print()
+
+    if ambiguous_units:
+        print("Ambiguous DoOR units (multi-glomerulus):")
+        for unit in ambiguous_units:
+            targets = sorted(
+                set(
+                    mapping_df.loc[mapping_df["door_name"] == unit, "flywire_glomerulus"]
+                    .astype(str)
+                    .str.strip()
+                    .tolist()
+                )
+            )
+            targets = [t for t in targets if t]
+            print(f"  - {unit}: {', '.join(targets)}")
+        print()
+
+    if unmapped:
+        print("Unmapped DoOR units (no ORN_<glomerulus> target):")
+        for unit in unmapped:
+            print(f"  - {unit}")
+        print()
+
+    print("=" * 70)
 
 
 if __name__ == "__main__":
     main()
+

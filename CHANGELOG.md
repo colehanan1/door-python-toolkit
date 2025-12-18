@@ -5,13 +5,23 @@ All notable changes to this project will be documented in this file. The format 
 ## [Unreleased]
 
 ### Added
-- _Placeholder_ – add new entries here.
+- Authoritative DoOR→FlyWire mapping system with provenance + strict validations (`src/door_toolkit/integration/door_to_flywire_mapping.py`).
+- Publication-critical mapping artifacts tracked under `data/mappings/`:
+  - `data/mappings/door_to_flywire_mapping.csv`
+  - `data/mappings/door_to_flywire_manual_overrides.csv`
+  - `data/mappings/sensillum_to_receptor_reference.csv`
+- Mapping pipeline documentation: `docs/DOOR_TO_FLYWIRE_MAPPING.md`.
 
 ### Changed
-- _Placeholder_ – record behaviour changes here.
+- `data/mappings/receptor_inventory.csv` is generated from the authoritative mapping artifact and defines “mapped” as “mapped to a valid `ORN_` FlyWire label” (not passthrough strings).
+- Adult-only filtering now follows DoOR.mappings (`adult=False`, `larva=True`) larval-only flags (DoOR 2.0; DOI: 10.1038/srep21841) throughout integration and inventory.
+- `.gitignore` now tracks `data/mappings/**` while continuing to ignore bulk `data/*`.
 
 ### Fixed
-- _Placeholder_ – document bug fixes here.
+- Corrected known mapping mismatches with explicit provenance:
+  - `Or10a → ORN_DL1` (DoOR.mappings; Münch & Galizia 2016, DOI: 10.1038/srep21841)
+  - `Ir64a.DC4 → ORN_DC4` and `Ir64a.DP1m → ORN_DP1m` (DoOR dotted-suffix convention)
+- Prevented ambiguous multi-glomerulus DoOR units (e.g., `DM5+DM3`, `DL2d/v`) from being silently treated as single mappings in adult analyses.
 
 ## [1.0.0] - 2025-12-17
 

@@ -145,13 +145,18 @@ Thumbs.db
 test_cache/
 test_data/
 
-data/
+# Ignore bulk data by default, but allow publication-critical mapping artifacts.
+# NOTE: Do not ignore the `data/` directory itself, otherwise `!data/mappings/**`
+# cannot re-include tracked files.
+data/*
+
+# Keep small, publication-critical mapping artifacts tracked
+!data/mappings/
+!data/mappings/**
 
 helper-code/
 
 output/
 behavioral_prediction_results/
-
-tests/
 
 flywire_mb_analysis/

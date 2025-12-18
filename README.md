@@ -251,6 +251,19 @@ Our analysis revealed:
 - **VM7v acts as convergence hub** receiving from multiple glomeruli
 - **Asymmetric connectivity** patterns suggesting specialized functions
 
+### ORN/Glomerulus Identifier Resolution
+
+The connectomics module includes a **robust identifier resolution system** that automatically normalizes messy ORN/glomerulus names and maps receptor names to their glomerulus names.
+
+**Key features:**
+- **Format-agnostic**: Accepts `"DL3"`, `"dl3"`, `"ORN_DL3"`, `"ORN-DL3"`, `"Glomerulus DL3"` - all resolve to `"ORN_DL3"`
+- **Receptor-to-glomerulus mapping**: Automatically maps `"Or7a"` → `"ORN_DL5"`, `"Ir31a"` → `"ORN_VL2p"`, `"Gr21a"` → `"ORN_V"`
+- **Complete coverage**: Includes 44 receptors (33 Or, 10 Ir, 1 Gr) mapped to their FlyWire glomeruli
+- **Fuzzy matching**: Suggests alternatives when exact matches fail (ranked by similarity)
+- **Clear errors**: Provides actionable error messages with top 10 suggestions
+
+In FlyWire, neurons are labeled by glomerulus name (e.g., `ORN_VL2p; Ir31a`), not receptor name. The resolver automatically handles this translation so you can use familiar receptor names like `"Ir31a"` or `"Or7a"` in your code. The system uses normalization (case-insensitive, separator-agnostic) combined with receptor mapping and fuzzy matching to prevent "non-matching ORN name" errors. All pathway analysis functions (`analyze_single_orn`, `compare_orn_pair`, `find_pathways`) accept both receptor names and glomerulus names. See [`examples/connectomics/example_orn_identifier_resolution.py`](examples/connectomics/example_orn_identifier_resolution.py) for a complete demonstration.
+
 ---
 
 ## FlyWire Integration
@@ -925,6 +938,48 @@ tracer.export_metrics_csv([metrics], "connectivity_metrics.csv")
 - `metrics.alpha_beta_fraction`: Fraction in appetitive lobe (0-1)
 - `metrics.circuit_score`: Overall connectivity score (0-1)
 
+### Mapping Accounting
+
+**IMPORTANT:** Prevents confusion between receptor counts and unique glomerulus counts in many-to-one mappings.
+
+```python
+from door_toolkit.integration.mapping_accounting import (
+    compute_mapping_stats,
+    format_mapping_summary,
+    log_mapping_stats,
+    write_mapping_stats_json
+)
+
+# Compute comprehensive mapping statistics
+mapping = {'OR82A': 'VA6', 'OR94A': 'VA6', 'OR7A': 'DL5'}  # Example with collision
+stats = compute_mapping_stats(
+    mapping,
+    note="Example mapping",
+    adult_only=False  # Include larval receptors
+)
+
+# Get compact summary
+summary = format_mapping_summary(stats)
+# "3 receptors → 2 unique glomeruli (1 collision)"
+
+# Check for many-to-one collapses
+if stats['collision_count'] > 0:
+    print(f"Collisions: {stats['collision_summary']}")
+    # ['VA6: OR82A, OR94A']
+
+# Write JSON artifact for reproducibility
+write_mapping_stats_json("mapping_stats.json", stats)
+```
+
+**Key Stats Returned:**
+- `n_receptors_mapped`: Number of receptor genes successfully mapped
+- `n_unique_glomeruli_from_mapped_receptors`: Number of distinct glomeruli (may differ!)
+- `collision_count`: Number of glomeruli with ≥2 receptors (many-to-one)
+- `collisions`: Dict of glomerulus → [receptor list] for collisions
+- `collision_summary`: Human-readable collision descriptions
+
+📚 **See:** [docs/RECEPTOR_GLOMERULUS_MAPPING_ACCOUNTING.md](docs/RECEPTOR_GLOMERULUS_MAPPING_ACCOUNTING.md) for complete documentation on preventing receptor vs glomerulus count confusion.
+
 ---
 
 ## Examples
@@ -941,6 +996,7 @@ Complete working examples are available in the `examples/` directory:
 - `examples/connectomics/example_2_orn_pair_comparison.py` - Mode 2: ORN pair comparison
 - `examples/connectomics/example_3_full_network_analysis.py` - Mode 3: Full network view
 - `examples/connectomics/example_4_pathway_search.py` - Mode 4: Pathway search
+- `examples/connectomics/example_orn_identifier_resolution.py` - Robust identifier resolution demo
 - `examples/connectomics/analyze_data_characteristics.py` - Data quality analysis
 
 ### Advanced Examples

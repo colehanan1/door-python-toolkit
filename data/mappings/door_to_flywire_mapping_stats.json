@@ -1,0 +1,288 @@
+{
+  "adult_only_mode": false,
+  "collision_count": 7,
+  "collision_summary": [
+    "ORN_DA2: Or33a, ab4B",
+    "ORN_DL4: Or49a, Or85f",
+    "ORN_DM2: Or22a, Or22b",
+    "ORN_DM3: Or47a, ab5B",
+    "ORN_DM5: Or85a, ab2B",
+    "ORN_VC1: Or33c, Or85e, pb2A",
+    "ORN_VC3: Or35a, ac3B"
+  ],
+  "collisions": {
+    "ORN_DA2": [
+      "Or33a",
+      "ab4B"
+    ],
+    "ORN_DL4": [
+      "Or49a",
+      "Or85f"
+    ],
+    "ORN_DM2": [
+      "Or22a",
+      "Or22b"
+    ],
+    "ORN_DM3": [
+      "Or47a",
+      "ab5B"
+    ],
+    "ORN_DM5": [
+      "Or85a",
+      "ab2B"
+    ],
+    "ORN_VC1": [
+      "Or33c",
+      "Or85e",
+      "pb2A"
+    ],
+    "ORN_VC3": [
+      "Or35a",
+      "ac3B"
+    ]
+  },
+  "glomerulus_to_receptors": {
+    "ORN_D": [
+      "Or69a"
+    ],
+    "ORN_DA1": [
+      "Or67d"
+    ],
+    "ORN_DA2": [
+      "Or33a",
+      "ab4B"
+    ],
+    "ORN_DA3": [
+      "Or23a"
+    ],
+    "ORN_DA4l": [
+      "Or43a"
+    ],
+    "ORN_DA4m": [
+      "Or2a"
+    ],
+    "ORN_DC1": [
+      "Or19a"
+    ],
+    "ORN_DC2": [
+      "Or13a"
+    ],
+    "ORN_DC3": [
+      "Or83c"
+    ],
+    "ORN_DC4": [
+      "Ir64a.DC4"
+    ],
+    "ORN_DL1": [
+      "Or10a"
+    ],
+    "ORN_DL3": [
+      "Or65a"
+    ],
+    "ORN_DL4": [
+      "Or49a",
+      "Or85f"
+    ],
+    "ORN_DL5": [
+      "Or7a"
+    ],
+    "ORN_DM1": [
+      "Or42b"
+    ],
+    "ORN_DM2": [
+      "Or22a",
+      "Or22b"
+    ],
+    "ORN_DM3": [
+      "Or47a",
+      "ab5B"
+    ],
+    "ORN_DM4": [
+      "Or59b"
+    ],
+    "ORN_DM5": [
+      "Or85a",
+      "ab2B"
+    ],
+    "ORN_DM6": [
+      "Or67a"
+    ],
+    "ORN_DP1l": [
+      "Ir75a"
+    ],
+    "ORN_DP1m": [
+      "Ir64a.DP1m"
+    ],
+    "ORN_V": [
+      "Gr21a.Gr63a"
+    ],
+    "ORN_VA1d": [
+      "Or88a"
+    ],
+    "ORN_VA1v": [
+      "Or47b"
+    ],
+    "ORN_VA2": [
+      "Or92a"
+    ],
+    "ORN_VA3": [
+      "Or67b"
+    ],
+    "ORN_VA4": [
+      "Or85d"
+    ],
+    "ORN_VA5": [
+      "Or49b"
+    ],
+    "ORN_VA6": [
+      "Or82a"
+    ],
+    "ORN_VA7l": [
+      "Or46a"
+    ],
+    "ORN_VC1": [
+      "Or33c",
+      "Or85e",
+      "pb2A"
+    ],
+    "ORN_VC2": [
+      "Or71a"
+    ],
+    "ORN_VC3": [
+      "Or35a",
+      "ac3B"
+    ],
+    "ORN_VC4": [
+      "Or67c"
+    ],
+    "ORN_VC5": [
+      "Ir41a"
+    ],
+    "ORN_VL1": [
+      "Ir75d"
+    ],
+    "ORN_VL2a": [
+      "Ir84a"
+    ],
+    "ORN_VL2p": [
+      "Ir31a"
+    ],
+    "ORN_VM1": [
+      "Ir92a"
+    ],
+    "ORN_VM2": [
+      "Or43b"
+    ],
+    "ORN_VM3": [
+      "Or9a"
+    ],
+    "ORN_VM4": [
+      "Ir76a"
+    ],
+    "ORN_VM5d": [
+      "Or85b"
+    ],
+    "ORN_VM5v": [
+      "Or98a"
+    ],
+    "ORN_VM7d": [
+      "Or42a"
+    ],
+    "ORN_VM7v": [
+      "Or59c"
+    ]
+  },
+  "n_receptors_excluded_larval": 0,
+  "n_receptors_excluded_other": 0,
+  "n_receptors_excluded_total": 0,
+  "n_receptors_mapped": 55,
+  "n_receptors_total": 78,
+  "n_receptors_unmapped": 23,
+  "n_unique_glomeruli_from_mapped_receptors": 47,
+  "n_unique_glomeruli_total_in_mapping": 47,
+  "note": "Authoritative DoOR \u2192 FlyWire ORN_<glomerulus> mapping (unambiguous rows only)",
+  "receptors_excluded_larval": [],
+  "receptors_excluded_other": [],
+  "receptors_mapped": [
+    "Gr21a.Gr63a",
+    "Ir31a",
+    "Ir41a",
+    "Ir64a.DC4",
+    "Ir64a.DP1m",
+    "Ir75a",
+    "Ir75d",
+    "Ir76a",
+    "Ir84a",
+    "Ir92a",
+    "Or10a",
+    "Or13a",
+    "Or19a",
+    "Or22a",
+    "Or22b",
+    "Or23a",
+    "Or2a",
+    "Or33a",
+    "Or33c",
+    "Or35a",
+    "Or42a",
+    "Or42b",
+    "Or43a",
+    "Or43b",
+    "Or46a",
+    "Or47a",
+    "Or47b",
+    "Or49a",
+    "Or49b",
+    "Or59b",
+    "Or59c",
+    "Or65a",
+    "Or67a",
+    "Or67b",
+    "Or67c",
+    "Or67d",
+    "Or69a",
+    "Or71a",
+    "Or7a",
+    "Or82a",
+    "Or83c",
+    "Or85a",
+    "Or85b",
+    "Or85d",
+    "Or85e",
+    "Or85f",
+    "Or88a",
+    "Or92a",
+    "Or98a",
+    "Or9a",
+    "ab2B",
+    "ab4B",
+    "ab5B",
+    "ac3B",
+    "pb2A"
+  ],
+  "receptors_unmapped": [
+    "Or1a",
+    "Or22c",
+    "Or24a",
+    "Or30a",
+    "Or33b",
+    "Or45a",
+    "Or45b",
+    "Or59a",
+    "Or74a",
+    "Or85c",
+    "Or94a",
+    "Or94b",
+    "ac1",
+    "ac1A",
+    "ac1B",
+    "ac1BC",
+    "ac2",
+    "ac2A",
+    "ac2B",
+    "ac2BC",
+    "ac3A",
+    "ac3_noOr35a",
+    "ac4"
+  ]
+}

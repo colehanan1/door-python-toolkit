@@ -18,6 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from .odorant_mapper import OdorantMapper
+from .receptor_identifier import normalize_receptor_identifier
 
 _odorant_mapper: Optional[OdorantMapper] = None
 
@@ -131,14 +132,54 @@ def map_door_to_flywire(door_names: List[str], mapping: Optional[pd.DataFrame] =
     if mapping is None:
         mapping = load_receptor_mapping()
 
-    # Create mapping dictionary
-    door_to_flywire = {}
+    # Create normalization-safe mapping dictionary
+    # NOTE: We key by normalized receptor identifier to avoid false "unmapped"
+    # caused by capitalization differences across sources.
+    normalized_to_flywire: Dict[str, str] = {}
+    if "door_name" not in mapping.columns or "flywire_glomerulus" not in mapping.columns:
+        raise ValueError(
+            "Mapping DataFrame must contain columns: 'door_name', 'flywire_glomerulus'"
+        )
+
+    grouped = mapping.groupby(mapping["door_name"].map(normalize_receptor_identifier), dropna=False)
+    for key, grp in grouped:
+        if not key:
+            continue
+
+        targets = [
+            str(v).strip()
+            for v in grp["flywire_glomerulus"].tolist()
+            if v is not None and str(v).strip() != ""
+        ]
+        if not targets:
+            continue
+
+        # Skip explicitly ambiguous mappings by default.
+        if "is_ambiguous" in grp.columns:
+            flagged = grp["is_ambiguous"].astype(str).str.strip().str.lower().isin({"yes", "true", "1", "y"})
+            if bool(flagged.any()):
+                logger.info("Skipping ambiguous mapping for %s (multiple glomeruli)", grp.iloc[0].get("door_name"))
+                continue
+
+        distinct = sorted(set(targets))
+        if len(distinct) != 1:
+            logger.warning("Conflicting mappings for %s: %s (skipping)", grp.iloc[0].get("door_name"), distinct)
+            continue
+
+        target = distinct[0]
+        if not target.startswith("ORN_"):
+            continue
+
+        normalized_to_flywire[key] = target
+
+    door_to_flywire: Dict[str, str] = {}
     missing = []
 
     for door_name in door_names:
-        matches = mapping[mapping['door_name'] == door_name]
-        if len(matches) > 0:
-            door_to_flywire[door_name] = matches.iloc[0]['flywire_glomerulus']
+        key = normalize_receptor_identifier(door_name)
+        flywire = normalized_to_flywire.get(key)
+        if flywire:
+            door_to_flywire[door_name] = flywire
         else:
             missing.append(door_name)
             logger.warning(f"No mapping found for {door_name}")

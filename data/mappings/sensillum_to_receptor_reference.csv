@@ -1,0 +1,17 @@
+door_name,flywire_glomerulus,receptor_genes,source_name,source_year,source_url_or_doi,evidence_note,confidence,is_ambiguous
+ab2B,ORN_DM5,"Or85a;Or33b","DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: ab2B glomerulus DM5; coexpressing Or85a+Or33b.",high,No
+ab4B,ORN_DA2,"Or33a;Or56a","DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: ab4B glomerulus DA2; coexpressing Or33a+Or56a.",high,No
+ab5B,ORN_DM3,"Or47a;Or33b","DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: ab5B glomerulus DM3; coexpressing Or47a+Or33b.",high,No
+pb2A,ORN_VC1,"Or33c;Or85e","DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pb2A glomerulus VC1; coexpressing Or33c+Or85e.",high,No
+ac3B,ORN_VC3,Or35a,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: ac3B glomerulus VC3; Or35a.",high,No
+ac1,ORN_VL1,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac1 sensillum responses; glomerulus candidates VL1+VM1+VL2p (Silbering et al. 2011 cited in DoOR).",ambiguous,Yes
+ac1,ORN_VM1,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac1 sensillum responses; glomerulus candidates VL1+VM1+VL2p (Silbering et al. 2011 cited in DoOR).",ambiguous,Yes
+ac1,ORN_VL2p,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac1 sensillum responses; glomerulus candidates VL1+VM1+VL2p (Silbering et al. 2011 cited in DoOR).",ambiguous,Yes
+ac2,ORN_VL1,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac2 sensillum responses; glomerulus candidates VL1+DP1l+VC5 (Silbering et al. 2011 cited in DoOR).",ambiguous,Yes
+ac2,ORN_DP1l,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac2 sensillum responses; glomerulus candidates VL1+DP1l+VC5 (Silbering et al. 2011 cited in DoOR).",ambiguous,Yes
+ac2,ORN_VC5,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac2 sensillum responses; glomerulus candidates VL1+DP1l+VC5 (Silbering et al. 2011 cited in DoOR).",ambiguous,Yes
+ac3A,ORN_DL2d,Ir75a;Ir75b;Ir75c,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: ac3A maps to DL2d/v (ambiguous between DL2d and DL2v).",ambiguous,Yes
+ac3A,ORN_DL2v,Ir75a;Ir75b;Ir75c,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: ac3A maps to DL2d/v (ambiguous between DL2d and DL2v).",ambiguous,Yes
+ac3_noOr35a,ORN_DL2d,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac3 (Or35a knockdown) maps to DL2d/v+VC3 (ambiguous).",ambiguous,Yes
+ac3_noOr35a,ORN_DL2v,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac3 (Or35a knockdown) maps to DL2d/v+VC3 (ambiguous).",ambiguous,Yes
+ac3_noOr35a,ORN_VC3,,"DoOR.mappings (DoOR.data v2.0.0; Münch & Galizia 2016)",2016,10.1038/srep21841,"DoOR.mappings: pooled ac3 (Or35a knockdown) maps to DL2d/v+VC3 (ambiguous).",ambiguous,Yes

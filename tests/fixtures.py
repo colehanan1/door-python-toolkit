@@ -64,7 +64,7 @@ def mock_door_cache(tmp_path):
         "cinnamaldehyde",
         "menthol",
         "isoamyl acetate",
-        "hexanal",
+        "1-hexanol",  # Changed from hexanal to 1-hexanol for hexanol tests
     ]
 
     meta_df = pd.DataFrame(

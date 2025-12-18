@@ -1,0 +1,116 @@
+{
+  "receptor_validation": {
+    "passed": true,
+    "errors": [],
+    "warnings": [
+      "11 larval receptors excluded: ['Or1a', 'Or22c', 'Or24a', 'Or30a', 'Or45a']..."
+    ],
+    "n_training_receptors": 55,
+    "n_connectivity_receptors": 78,
+    "larval_excluded_count": 11
+  },
+  "tests": [
+    {
+      "test_name": "overfit_test",
+      "passed": true,
+      "n_flies_requested": 3,
+      "n_flies_used": 3,
+      "n_trials": 30,
+      "epochs": 100,
+      "best_metrics": {
+        "epoch": 99,
+        "loss": 0.001213203805188338,
+        "auroc": 1.0,
+        "auprc": 1.0,
+        "fixed_threshold": 0.5,
+        "fixed_balanced_acc": 1.0,
+        "optimized_threshold": 0.500145586207509,
+        "optimized_balanced_acc": 1.0
+      },
+      "diagnostics": {
+        "tiny_subset_flies": [
+          "december_05_batch_1_2",
+          "november_05_batch_2_1",
+          "november_07_batch_1_2"
+        ],
+        "tiny_subset_trials": 30,
+        "tiny_subset_pos": 15,
+        "tiny_subset_neg": 15,
+        "per_fly_class_counts": {
+          "december_05_batch_1_2": {
+            "pos": 5,
+            "neg": 5
+          },
+          "november_05_batch_2_1": {
+            "pos": 5,
+            "neg": 5
+          },
+          "november_07_batch_1_2": {
+            "pos": 5,
+            "neg": 5
+          }
+        },
+        "overfit_thresholds": {
+          "fixed_threshold": 0.5,
+          "optimized_threshold": 0.500145586207509
+        },
+        "overfit_gate": {
+          "loss_gate_passed": true,
+          "optimized_balacc_gate_passed": true,
+          "final_passed": true
+        },
+        "legacy_tiny_subset": {
+          "flies": [
+            "november_18_batch_1_3",
+            "december_09_batch_1_3",
+            "october_24_batch_1_rig_2_2"
+          ],
+          "trials": 30,
+          "pos": 3,
+          "neg": 27,
+          "per_fly_class_counts": {
+            "november_18_batch_1_3": {
+              "pos": 2,
+              "neg": 8
+            },
+            "december_09_batch_1_3": {
+              "pos": 1,
+              "neg": 9
+            },
+            "october_24_batch_1_rig_2_2": {
+              "pos": 0,
+              "neg": 10
+            }
+          },
+          "flies_with_single_class": [
+            "october_24_batch_1_rig_2_2"
+          ],
+          "selection_method": "legacy_first_k_after_shuffle(create_fly_wise_splits(seed))"
+        }
+      },
+      "success_criteria": {
+        "loss_eps": 0.05,
+        "optimized_balacc_eps": 0.95
+      }
+    },
+    {
+      "test_name": "label_shuffle_test",
+      "passed": true,
+      "epochs": 10,
+      "final_metrics": {
+        "auroc": 0.47596193289031097,
+        "balanced_acc": 0.5
+      },
+      "success_criteria": {
+        "auroc_range": [
+          0.4,
+          0.6
+        ],
+        "balanced_acc_range": [
+          0.4,
+          0.6
+        ]
+      }
+    }
+  ]
+}

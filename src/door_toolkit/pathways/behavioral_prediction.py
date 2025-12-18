@@ -613,6 +613,14 @@ class LassoBehavioralPredictor:
 
         # Load behavioral data
         self.behavioral_data = pd.read_csv(self.behavior_csv_path, index_col=0)
+
+        # Validate behavioral data is not empty
+        if self.behavioral_data.empty or self.behavioral_data.shape[0] == 0:
+            raise ValueError(
+                f"Behavioral CSV is empty: {self.behavior_csv_path}. "
+                "Expected at least one condition row."
+            )
+
         logger.info(
             f"Loaded behavioral data: {self.behavioral_data.shape[0]} conditions, "
             f"{self.behavioral_data.shape[1]} odorants"
@@ -724,16 +732,6 @@ class LassoBehavioralPredictor:
         """
         logger.info(f"Fitting LASSO model for condition: {condition_name}")
 
-        # Auto-detect trained odorant if not provided
-        if trained_odorant is None:
-            trained_odorant = self.CONDITION_ODORANT_MAPPING.get(condition_name)
-            if trained_odorant is None:
-                raise ValueError(
-                    f"Could not auto-detect trained odorant for '{condition_name}'. "
-                    f"Please specify manually."
-                )
-            logger.info(f"Auto-detected trained odorant: {trained_odorant}")
-
         # Get behavioral responses for this condition
         if condition_name not in self.behavioral_data.index:
             raise ValueError(f"Condition '{condition_name}' not found in behavioral data")
@@ -746,6 +744,23 @@ class LassoBehavioralPredictor:
             raise ValueError(f"No valid PER data for condition '{condition_name}'")
 
         logger.info(f"Found {len(valid_odorants)} valid test odorants")
+
+        # Auto-detect trained odorant (best-effort for all prediction modes)
+        # Decision: Attempt auto-detection for all modes to populate results.trained_odorant
+        # Evidence: test_fit_behavior_auto_detect_odorant expects trained_odorant even in test_odorant mode
+        # Implementation: Try CONDITION_ODORANT_MAPPING, only raise if needed and missing
+        if trained_odorant is None:
+            trained_odorant_guess = self.CONDITION_ODORANT_MAPPING.get(condition_name)
+            if trained_odorant_guess is not None:
+                trained_odorant = trained_odorant_guess
+                logger.info(f"Auto-detected trained odorant: {trained_odorant}")
+            elif prediction_mode in ["trained_odorant", "interaction"]:
+                # These modes require trained_odorant for feature extraction
+                raise ValueError(
+                    f"Could not auto-detect trained odorant for '{condition_name}'. "
+                    f"Please specify manually or use prediction_mode='test_odorant'."
+                )
+            # For test_odorant mode: continue with trained_odorant=None (not needed for features)
 
         # Extract features based on prediction mode
         if prediction_mode == "test_odorant":
@@ -774,10 +789,14 @@ class LassoBehavioralPredictor:
             )
 
         # Get trained odorant DoOR name and coverage
-        trained_door_name = self.match_odorant_name(trained_odorant)
-        if trained_door_name:
-            _, trained_coverage = self.get_receptor_profile(trained_odorant)
+        if trained_odorant:
+            trained_door_name = self.match_odorant_name(trained_odorant)
+            if trained_door_name:
+                _, trained_coverage = self.get_receptor_profile(trained_odorant)
+            else:
+                trained_coverage = 0
         else:
+            trained_door_name = None
             trained_coverage = 0
 
         # Scale features and targets if requested

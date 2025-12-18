@@ -1,0 +1,27 @@
+{
+  "logistic_regression": {
+    "train": {
+      "auroc": 0.8636609471313419,
+      "auprc": 0.5901370015864995,
+      "balanced_acc": 0.7801683262209578
+    },
+    "val": {
+      "auroc": 0.855629348513599,
+      "auprc": 0.544130271010811,
+      "balanced_acc": 0.7866856419987349
+    },
+    "test": {
+      "auroc": 0.8434636727319655,
+      "auprc": 0.5094186895327758,
+      "balanced_acc": 0.775454897406117
+    }
+  },
+  "data_splits": {
+    "n_train_flies": 104,
+    "n_val_flies": 22,
+    "n_test_flies": 23,
+    "n_train_trials": 1040,
+    "n_val_trials": 220,
+    "n_test_trials": 230
+  }
+}

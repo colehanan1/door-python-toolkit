@@ -148,12 +148,12 @@ class OdorantMapper:
 
         return matches[:max_results]
 
-    def list_all_odorants(self) -> List[Tuple[str, str]]:
+    def list_all_odorants(self) -> List[str]:
         """
         Get list of all available odorants.
 
         Returns:
-            List of (common_name, inchikey) tuples, sorted by name.
+            List of common names, sorted alphabetically.
         """
-        odorants = [(name, inchikey) for inchikey, name in self.inchikey_to_name.items()]
-        return sorted(odorants, key=lambda item: item[0].lower())
+        odorants = [name for name in self.inchikey_to_name.values()]
+        return sorted(odorants, key=lambda name: name.lower())

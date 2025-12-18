@@ -164,7 +164,7 @@ class TestOdorantMappingBugFix:
         assert len(results) > 0
         # Should find acetic acid
         names = [r[0] for r in results]
-        assert any("acetic" in name for name in names)
+        assert any("acetic" in name.lower() for name in names)
 
     def test_list_all_odorants(self):
         """Test listing all available odorants."""

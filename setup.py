@@ -9,7 +9,7 @@ README = PROJECT_ROOT / "README.md"
 
 setup(
     name="door-python-toolkit",
-    version="1.0.0",
+    version="1.0.1",
     description="Comprehensive Python toolkit for Drosophila olfactory research: DoOR database integration, FlyWire connectomics, mushroom body circuit validation, and LASSO behavioral prediction.",
     long_description=README.read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",

@@ -1,0 +1,12 @@
+======================================================================
+RECEPTOR ORDERING VALIDATION REPORT
+======================================================================
+Status: ✅ PASSED
+Training receptors: 55
+Connectivity receptors: 78
+
+WARNINGS:
+  ⚠️  11 larval receptors excluded: ['Or1a', 'Or22c', 'Or24a', 'Or30a', 'Or45a']...
+
+Larval receptors excluded: 11
+======================================================================

@@ -147,6 +147,15 @@ def _parse_args() -> argparse.Namespace:
         help="Disable post-training connectome analysis even if connectivity files are available.",
     )
 
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "Fail on connectome alignment errors instead of continuing with warning. "
+            "Recommended for audit/validation runs to catch silent data misalignment."
+        ),
+    )
+
     return parser.parse_args()
 
 
@@ -419,9 +428,17 @@ def main() -> None:
         connectome_dir = user_connectome_dir or autodetect_connectome_dir(repo_root)
 
         if connectome_dir is None:
+            if args.strict:
+                raise FileNotFoundError(
+                    "Connectome analysis failed (--strict mode): "
+                    "No connectivity artifacts found. Provide --connectome_dir or disable --strict."
+                )
             logger.info("Connectome analysis skipped (no connectivity artifacts found).")
         else:
-            strict = user_connectome_dir is not None
+            # Enable strict mode if user explicitly provided --connectome_dir OR --strict flag
+            strict = (user_connectome_dir is not None) or bool(args.strict)
+            if strict:
+                logger.info("Connectome analysis: strict mode enabled (errors will raise)")
             try:
                 A_raw, B_raw, meta = load_connectome_matrices(connectome_dir)
                 connectome_receptors = meta.get("receptor_names") or meta.get("connectivity_receptor_order")
@@ -509,9 +526,15 @@ def main() -> None:
                         "orn_to_pn_edges": orn_to_pn_edges,
                     },
                 )
+                logger.info(
+                    "Connectome alignment successful: ORN×PN=%s, PN×KC=%s",
+                    A_aligned.shape,
+                    B_kc_by_pn.shape,
+                )
                 logger.info("Wrote: %s", out_dir / "connectome_analysis")
             except Exception as e:
                 if strict:
+                    logger.error("Connectome alignment failed (--strict mode): %s", e)
                     raise
                 logger.warning("Connectome analysis skipped due to error: %s", e)
 
@@ -551,6 +574,7 @@ def main() -> None:
         "trained_odor_map_json": args.trained_odor_map_json,
         "connectome_dir": args.connectome_dir,
         "disable_connectome_analysis": bool(args.disable_connectome_analysis),
+        "strict": bool(args.strict),
         "git_sha": metrics["git_sha"],
     }
     save_json(out_dir / "run_config.json", run_config)

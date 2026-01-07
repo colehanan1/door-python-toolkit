@@ -358,32 +358,45 @@ class PathwayAnalyzer:
 
         return pathway
 
-    def compute_shapley_importance(
+    def compute_shapley_proxy_importance(
         self, target_behavior: str, odorants: Optional[List[str]] = None
     ) -> Dict[str, float]:
         """
-        Compute Shapley values for receptor importance.
+        Compute importance via variance-weighted activation proxy (NOT true Shapley values).
 
-        Shapley values quantify each receptor's contribution to a behavior
-        by considering all possible receptor combinations.
+        This method computes importance as: variance(receptor_activation) × mean(|activation|)
+        normalized to sum to 1.0. This is a fast approximation inspired by Shapley value
+        concepts but does NOT enumerate receptor coalitions or use game-theoretic payoffs.
+
+        For true Shapley values, see: https://github.com/shap/shap
 
         Args:
-            target_behavior: Behavior to analyze
-            odorants: Optional list of odorants to consider
+            target_behavior: Behavior to analyze (used for logging, not computation)
+            odorants: Optional list of odorants to consider. If None, uses first
+                100 odorants for efficiency.
 
         Returns:
-            Dictionary mapping receptor names to Shapley values
+            Dictionary mapping receptor names to importance scores (summing to 1.0).
+
+        Raises:
+            ValueError: If no valid odorant responses found
+
+        Notes:
+            - This is a variance × mean-absolute proxy, not game-theoretic Shapley values
+            - Useful for fast feature importance approximation in neural pipelines
+            - For coalitional game-theoretic analysis, use alternative methods (SHAP, etc.)
+            - Importance formula: score[i] = var(activations[:, i]) * mean(abs(activations[:, i]))
 
         Example:
             >>> analyzer = PathwayAnalyzer("door_cache")
-            >>> importance = analyzer.compute_shapley_importance("feeding")
+            >>> importance = analyzer.compute_shapley_proxy_importance("feeding")
             >>> for receptor, value in sorted(importance.items(), key=lambda x: -x[1])[:5]:
             ...     print(f"{receptor}: {value:.4f}")
         """
-        logger.info(f"Computing Shapley values for behavior: {target_behavior}")
+        logger.info(f"Computing Shapley-proxy importance for behavior: {target_behavior}")
 
-        # For simplicity, use variance-based importance as approximation
-        # Full Shapley computation would require behavior labels
+        # Variance-based importance approximation
+        # Full Shapley computation would require behavior labels and coalition enumeration
         if odorants is None:
             odorants = self.encoder.odorant_names[:100]  # Sample for efficiency
 
@@ -399,11 +412,10 @@ class PathwayAnalyzer:
             except Exception:
                 continue
 
-        # Calculate variance as proxy for importance
+        # Calculate variance × mean-absolute as proxy for importance
         importance_scores = {}
         for receptor, activations in receptor_activations.items():
             if len(activations) > 0:
-                # Use variance and mean as combined importance metric
                 variance = np.var(activations)
                 mean_abs = np.mean(np.abs(activations))
                 importance_scores[receptor] = float(variance * mean_abs)
@@ -415,8 +427,34 @@ class PathwayAnalyzer:
         if total > 0:
             importance_scores = {k: v / total for k, v in importance_scores.items()}
 
-        logger.info(f"Computed importance scores for {len(importance_scores)} receptors")
+        logger.info(f"Computed proxy importance scores for {len(importance_scores)} receptors")
         return importance_scores
+
+    def compute_shapley_importance(
+        self, target_behavior: str, odorants: Optional[List[str]] = None
+    ) -> Dict[str, float]:
+        """
+        DEPRECATED: Use compute_shapley_proxy_importance() instead.
+
+        This was renamed to clarify that it computes a variance-weighted proxy,
+        NOT true Shapley values (which require coalition enumeration).
+
+        Args:
+            target_behavior: Behavior to analyze
+            odorants: Optional list of odorants to consider
+
+        Returns:
+            Dictionary mapping receptor names to importance scores
+        """
+        import warnings
+
+        warnings.warn(
+            "compute_shapley_importance() is deprecated. Use compute_shapley_proxy_importance() "
+            "instead. This method computes a variance-weighted proxy, NOT true Shapley values.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.compute_shapley_proxy_importance(target_behavior, odorants=odorants)
 
     def find_critical_blocking_targets(
         self, pathway: Optional[PathwayResult] = None, threshold: float = 0.1

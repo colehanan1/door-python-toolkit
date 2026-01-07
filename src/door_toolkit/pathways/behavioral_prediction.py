@@ -540,6 +540,7 @@ class LassoBehavioralPredictor:
         behavioral_data: Loaded behavioral DataFrame
         scale_features: Whether to standardize receptor features
         scale_targets: Whether to standardize PER targets
+        adult_only_masking: Whether to restrict to adult-only receptors
 
     Example:
         >>> predictor = LassoBehavioralPredictor(
@@ -549,6 +550,13 @@ class LassoBehavioralPredictor:
         >>> results = predictor.fit_behavior("opto_hex", "Hexanol")
         >>> results.plot_predictions(save_to="opto_hex_predictions.png")
         >>> print(results.summary())
+
+        # For adult-only receptor alignment with behavior_rate_model:
+        >>> predictor_adult = LassoBehavioralPredictor(
+        ...     doorcache_path="door_cache",
+        ...     behavior_csv_path="reaction_rates.csv",
+        ...     adult_only_masking=True
+        ... )
     """
 
     # Odorant name mapping: CSV name → DoOR name
@@ -585,6 +593,8 @@ class LassoBehavioralPredictor:
         behavior_csv_path: str,
         scale_features: bool = True,
         scale_targets: bool = False,
+        adult_only_masking: bool = False,
+        training_receptor_set_path: Optional[str] = None,
     ):
         """
         Initialize LASSO behavioral predictor.
@@ -594,14 +604,28 @@ class LassoBehavioralPredictor:
             behavior_csv_path: Path to reaction_rates_summary_unordered.csv
             scale_features: Standardize receptor features before fitting
             scale_targets: Standardize PER targets before fitting
+            adult_only_masking: If True, restrict to 55 adult-only receptors
+                from training_receptor_set.json. Aligns LASSO rankings with
+                connectome-aware GLM pipeline. Defaults to False for backward
+                compatibility.
+            training_receptor_set_path: Path to training_receptor_set.json.
+                If None and adult_only_masking=True, auto-detects from
+                data/mappings/training_receptor_set.json relative to package.
 
         Raises:
             FileNotFoundError: If paths don't exist
+
+        Notes:
+            When adult_only_masking=True:
+            - LASSO weights are computed over 55 adult receptors only
+            - Larval-only receptors are explicitly excluded from importance rankings
+            - This alignment prevents inconsistent receptor rankings across pipelines
         """
         self.doorcache_path = Path(doorcache_path)
         self.behavior_csv_path = Path(behavior_csv_path)
         self.scale_features = scale_features
         self.scale_targets = scale_targets
+        self.adult_only_masking = adult_only_masking
 
         if not self.doorcache_path.exists():
             raise FileNotFoundError(f"DoOR cache not found: {self.doorcache_path}")
@@ -610,6 +634,13 @@ class LassoBehavioralPredictor:
 
         # Initialize encoder
         self.encoder = DoOREncoder(str(self.doorcache_path), use_torch=False)
+
+        # Build adult receptor mask if requested
+        self.receptor_mask: Optional[np.ndarray] = None
+        self.masked_receptor_names: List[str] = list(self.encoder.receptor_names)
+
+        if adult_only_masking:
+            self._build_adult_receptor_mask(training_receptor_set_path)
 
         # Load behavioral data
         self.behavioral_data = pd.read_csv(self.behavior_csv_path, index_col=0)
@@ -626,8 +657,60 @@ class LassoBehavioralPredictor:
             f"{self.behavioral_data.shape[1]} odorants"
         )
 
+        if adult_only_masking:
+            logger.info(
+                f"Adult-only masking enabled: using {len(self.masked_receptor_names)} "
+                f"of {self.encoder.n_channels} receptors"
+            )
+
         # Build reverse odorant mapping for fuzzy matching
         self._build_odorant_mapping()
+
+    def _build_adult_receptor_mask(
+        self, training_receptor_set_path: Optional[str] = None
+    ) -> None:
+        """
+        Build boolean mask for adult-only receptors.
+
+        Args:
+            training_receptor_set_path: Path to training_receptor_set.json.
+                If None, auto-detects from data/mappings/training_receptor_set.json.
+
+        Raises:
+            FileNotFoundError: If training receptor set file not found
+        """
+        if training_receptor_set_path is not None:
+            receptor_set_path = Path(training_receptor_set_path)
+        else:
+            # Auto-detect from package location
+            package_root = Path(__file__).resolve().parents[3]
+            receptor_set_path = package_root / "data" / "mappings" / "training_receptor_set.json"
+
+        if not receptor_set_path.exists():
+            raise FileNotFoundError(
+                f"Training receptor set not found: {receptor_set_path}. "
+                "Provide path via training_receptor_set_path parameter."
+            )
+
+        with open(receptor_set_path, "r", encoding="utf-8") as f:
+            receptor_set = json.load(f)
+
+        adult_receptors = set(receptor_set.get("receptors", []))
+
+        # Build mask: True for receptors to keep
+        self.receptor_mask = np.array(
+            [r in adult_receptors for r in self.encoder.receptor_names], dtype=bool
+        )
+
+        # Store masked receptor names in order
+        self.masked_receptor_names = [
+            r for r, keep in zip(self.encoder.receptor_names, self.receptor_mask) if keep
+        ]
+
+        logger.debug(
+            f"Adult receptor mask: {self.receptor_mask.sum()} of "
+            f"{len(self.receptor_mask)} receptors selected"
+        )
 
     def _build_odorant_mapping(self):
         """Build case-insensitive odorant name mapping."""
@@ -683,21 +766,38 @@ class LassoBehavioralPredictor:
             fill_missing: Value for missing receptor responses
 
         Returns:
-            Tuple of (response_vector, n_receptors_with_data)
+            Tuple of (response_vector, n_receptors_with_data).
+            If adult_only_masking is enabled, returns masked profile with
+            only adult receptors.
         """
         door_name = self.match_odorant_name(odorant_name)
 
+        # Determine output size based on masking
+        n_output = (
+            len(self.masked_receptor_names)
+            if self.adult_only_masking
+            else self.encoder.n_channels
+        )
+
         if door_name is None:
             logger.warning(f"Odorant '{odorant_name}' not in DoOR, using zeros")
-            profile = np.zeros(self.encoder.n_channels)
+            profile = np.zeros(n_output)
             coverage = 0
         else:
-            profile = self.encoder.encode(door_name, fill_missing=fill_missing)
-            if isinstance(profile, np.ndarray):
-                profile = profile.astype(np.float64)
+            full_profile = self.encoder.encode(door_name, fill_missing=fill_missing)
+            if isinstance(full_profile, np.ndarray):
+                full_profile = full_profile.astype(np.float64)
             else:
-                profile = np.array(profile, dtype=np.float64)
-            coverage = int(np.sum(~np.isnan(profile)))
+                full_profile = np.array(full_profile, dtype=np.float64)
+
+            # Apply mask if adult_only_masking is enabled
+            if self.adult_only_masking and self.receptor_mask is not None:
+                profile = full_profile[self.receptor_mask]
+                # Coverage is based on non-NaN values in the masked profile
+                coverage = int(np.sum(~np.isnan(profile)))
+            else:
+                profile = full_profile
+                coverage = int(np.sum(~np.isnan(profile)))
 
         return profile, coverage
 
@@ -849,10 +949,12 @@ class LassoBehavioralPredictor:
             y_pred = y_pred_scaled
 
         # Extract non-zero coefficients
+        # Use masked receptor names if adult_only_masking is enabled
+        active_receptor_names = self.masked_receptor_names
         lasso_weights = {}
         for i, coef in enumerate(lasso.coef_):
             if abs(coef) > 1e-6:
-                lasso_weights[self.encoder.receptor_names[i]] = float(coef)
+                lasso_weights[active_receptor_names[i]] = float(coef)
 
         # Compute cross-validated metrics
         cv_scores = cross_val_score(
@@ -872,6 +974,12 @@ class LassoBehavioralPredictor:
         logger.info(f"Model performance: R² = {cv_r2:.4f}, MSE = {cv_mse:.4f}")
         logger.info(f"Selected {len(lasso_weights)} receptors with non-zero weights")
 
+        if self.adult_only_masking:
+            logger.info(
+                f"Adult-only masking: weights computed over {len(active_receptor_names)} "
+                f"receptors (excluded {self.encoder.n_channels - len(active_receptor_names)} larval)"
+            )
+
         # Create results object
         results = BehaviorModelResults(
             condition_name=condition_name,
@@ -887,7 +995,7 @@ class LassoBehavioralPredictor:
             predicted_per=y_pred,
             receptor_coverage=trained_coverage,
             feature_matrix=X,
-            receptor_names=self.encoder.receptor_names,
+            receptor_names=list(active_receptor_names),
         )
 
         return results

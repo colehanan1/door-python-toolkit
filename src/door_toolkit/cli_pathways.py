@@ -35,8 +35,8 @@ Examples:
   door-pathways --cache door_cache --custom-pathway \\
     --receptors Or92a --odorants geosmin --behavior avoidance
 
-  # Compute Shapley importance scores
-  door-pathways --cache door_cache --shapley feeding --output importance.json
+  # Compute Shapley-proxy importance scores (variance-weighted, NOT true Shapley)
+  door-pathways --cache door_cache --shapley_proxy feeding --output importance.json
 
   # Generate experiment protocol
   door-pathways --cache door_cache --generate-experiment 1 \\
@@ -91,9 +91,15 @@ Examples:
     )
 
     parser.add_argument(
+        "--shapley_proxy",
+        type=str,
+        help="Compute Shapley-proxy importance (variance-weighted activation, NOT true Shapley values)",
+    )
+
+    parser.add_argument(
         "--shapley",
         type=str,
-        help="Compute Shapley importance for behavior",
+        help="DEPRECATED: Use --shapley_proxy instead. Compute Shapley-proxy importance for behavior",
     )
 
     parser.add_argument(
@@ -211,12 +217,25 @@ Examples:
 
             sys.exit(0)
 
-        # Compute Shapley importance
-        if args.shapley:
-            logger.info(f"Computing Shapley importance for: {args.shapley}")
-            importance = analyzer.compute_shapley_importance(args.shapley)
+        # Compute Shapley-proxy importance
+        shapley_target = args.shapley_proxy or args.shapley
+        if shapley_target:
+            if args.shapley and not args.shapley_proxy:
+                import warnings
+                warnings.warn(
+                    "--shapley is deprecated. Use --shapley_proxy instead. "
+                    "This computes variance-weighted proxy importance, NOT true Shapley values.",
+                    DeprecationWarning,
+                )
+                logger.warning(
+                    "DEPRECATION: --shapley is deprecated. Use --shapley_proxy instead."
+                )
 
-            print(f"\nShapley Importance Scores ({args.shapley}):")
+            logger.info(f"Computing Shapley-proxy importance for: {shapley_target}")
+            importance = analyzer.compute_shapley_proxy_importance(shapley_target)
+
+            print(f"\nShapley-Proxy Importance Scores ({shapley_target}):")
+            print("(Note: This is a variance-weighted proxy, NOT true Shapley values)")
             sorted_importance = sorted(importance.items(), key=lambda x: x[1], reverse=True)
             for receptor, score in sorted_importance[:20]:
                 print(f"  {receptor}: {score:.4f}")

@@ -34,6 +34,12 @@ from door_toolkit.pathways.behavioral_prediction import (
     BehaviorModelResults,
     BehaviorPrediction,
 )
+from door_toolkit.pathways.behavior_rate_model import (
+    SparseRateGLM,
+    TrainConfig,
+    build_training_table,
+    train_sparse_rate_glm,
+)
 
 __all__ = [
     "PathwayAnalyzer",
@@ -44,4 +50,8 @@ __all__ = [
     "LassoBehavioralPredictor",
     "BehaviorModelResults",
     "BehaviorPrediction",
+    "SparseRateGLM",
+    "TrainConfig",
+    "build_training_table",
+    "train_sparse_rate_glm",
 ]

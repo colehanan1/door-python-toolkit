@@ -194,6 +194,28 @@ Report AUROC, AUPRC (average precision), and balanced accuracy. Not just raw acc
 
 **Location**: [train_static_door_rnn.py:108-123](../scripts/train_static_door_rnn.py)
 
+### Threshold Calibration (Validation → Test)
+
+#### Decision
+Choose a probability threshold on the **validation set only**, then apply it once on the held-out **test set**. Report test metrics at both:
+1) fixed `threshold=0.5` (status quo), and
+2) calibrated `threshold=thr_opt_from_val`.
+
+#### Evidence
+- **Imbalanced labels** can push predicted probabilities below 0.5, yielding **all-negative predictions** and `balanced_acc=0.5` even when AUROC is strong.
+- Selecting a threshold on the test set is **data leakage** and inflates reported metrics.
+- Comparing against baselines (e.g., logistic regression) requires a **fair thresholding protocol** when balanced accuracy is reported.
+
+#### Implementation
+- Collect `y_val_true/y_val_prob` after training, compute `thr_opt_from_val` by maximizing balanced accuracy using a deterministic midpoint grid (ties → lowest threshold).
+- Apply `thr_opt_from_val` to `y_test_prob` once (no re-optimization on test).
+- Save a self-contained evaluation artifact: `threshold_calibration_eval.json` in the run output directory.
+- Also embed the same summary block in `metrics.json` under `threshold_calibration_eval`.
+
+**Location**:
+- Threshold search + metrics helpers: [`src/door_toolkit/threshold_calibration.py`](../src/door_toolkit/threshold_calibration.py)
+- Training integration + artifact write: [`scripts/train_static_door_rnn.py`](../scripts/train_static_door_rnn.py)
+
 ---
 
 ## 8. Provenance Tracking

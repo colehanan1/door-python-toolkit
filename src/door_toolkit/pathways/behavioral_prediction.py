@@ -1417,3 +1417,86 @@ def fit_lasso_with_fixed_scaler(
     cv_mse = float(-np.mean(cv_mse_scores))
 
     return lasso_weights, cv_r2, cv_mse, best_lambda, y_pred
+
+
+def restrict_to_receptors(
+    X: np.ndarray,
+    receptor_names: List[str],
+    receptors_to_keep: List[str],
+) -> Tuple[np.ndarray, List[str], List[int]]:
+    """
+    Restrict feature matrix to specified receptor subset.
+
+    Args:
+        X: Feature matrix (n_samples, n_receptors)
+        receptor_names: List of receptor names corresponding to X columns
+        receptors_to_keep: Receptor names to retain (case-insensitive)
+
+    Returns:
+        Tuple of (X_restricted, kept_receptor_names, kept_indices)
+        - X_restricted: Subset of X with only specified columns
+        - kept_receptor_names: Receptor names in kept order
+        - kept_indices: Original column indices that were kept
+
+    Raises:
+        ValueError: If any receptor in receptors_to_keep not found
+
+    Example:
+        >>> X = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        >>> X_res, names, idx = restrict_to_receptors(
+        ...     X, ["Or42b", "Or47b", "Or22a"], ["Or47b", "Or22a"]
+        ... )
+        >>> X_res
+        array([[2., 3.],
+               [5., 6.]])
+        >>> names
+        ['Or47b', 'Or22a']
+    """
+    # Resolve receptor names (strict mode)
+    matched, unmatched = resolve_receptor_names(
+        receptors_to_keep, receptor_names, strict=True
+    )
+
+    # Find indices of matched receptors (in original order)
+    name_to_idx = {name: i for i, name in enumerate(receptor_names)}
+    kept_indices = [name_to_idx[r] for r in matched]
+
+    # Sort indices to preserve original column order
+    kept_indices_sorted = sorted(kept_indices)
+    kept_receptor_names = [receptor_names[i] for i in kept_indices_sorted]
+
+    # Restrict X to kept columns
+    X_restricted = X[:, kept_indices_sorted]
+
+    logger.info(
+        f"Restricted to {len(kept_indices_sorted)} receptors: {kept_receptor_names}"
+    )
+
+    return X_restricted, kept_receptor_names, kept_indices_sorted
+
+
+def get_top_receptors_by_weight(
+    lasso_weights: Dict[str, float],
+    n: int,
+) -> List[str]:
+    """
+    Get top N receptors ranked by absolute LASSO weight.
+
+    Args:
+        lasso_weights: Dictionary of {receptor: weight}
+        n: Number of top receptors to return
+
+    Returns:
+        List of receptor names sorted by absolute weight (descending)
+
+    Example:
+        >>> weights = {"Or42b": 0.5, "Or47b": -0.8, "Or22a": 0.3}
+        >>> get_top_receptors_by_weight(weights, 2)
+        ['Or47b', 'Or42b']
+    """
+    sorted_receptors = sorted(
+        lasso_weights.items(),
+        key=lambda x: abs(x[1]),
+        reverse=True,
+    )
+    return [r for r, _ in sorted_receptors[:n]]

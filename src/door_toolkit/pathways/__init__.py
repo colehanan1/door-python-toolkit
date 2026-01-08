@@ -36,6 +36,8 @@ from door_toolkit.pathways.behavioral_prediction import (
     resolve_receptor_names,
     apply_receptor_ablation,
     fit_lasso_with_fixed_scaler,
+    restrict_to_receptors,
+    get_top_receptors_by_weight,
 )
 from door_toolkit.pathways.behavior_rate_model import (
     SparseRateGLM,
@@ -56,6 +58,8 @@ __all__ = [
     "resolve_receptor_names",
     "apply_receptor_ablation",
     "fit_lasso_with_fixed_scaler",
+    "restrict_to_receptors",
+    "get_top_receptors_by_weight",
     "SparseRateGLM",
     "TrainConfig",
     "build_training_table",

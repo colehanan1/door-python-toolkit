@@ -10,7 +10,10 @@ import pytest
 from door_toolkit.pathways.behavioral_prediction import (
     BehaviorModelResults,
     LassoBehavioralPredictor,
+    apply_receptor_ablation,
+    fit_lasso_with_fixed_scaler,
 )
+from sklearn.preprocessing import StandardScaler
 
 
 @pytest.fixture
@@ -504,3 +507,91 @@ class TestLassoBehavioralPredictorControlSubtraction:
                 cv_folds=2,
                 subtract_control=True,
             )
+
+
+class TestLassoBehavioralPredictorRegressionChecks:
+    """Regression checks for mutation and ΔPER prediction collapse."""
+
+    def test_ablation_does_not_mutate_baseline_matrix(
+        self, mock_door_cache, mock_behavioral_csv
+    ):
+        predictor = LassoBehavioralPredictor(
+            doorcache_path=str(mock_door_cache),
+            behavior_csv_path=str(mock_behavioral_csv),
+            scale_features=True,
+            scale_targets=False,
+        )
+
+        try:
+            baseline = predictor.fit_behavior(
+                condition_name="opto_hex",
+                lambda_range=[0.1],
+                cv_folds=2,
+            )
+        except ValueError as exc:
+            pytest.skip(f"Insufficient data for baseline fit: {exc}")
+
+        if baseline.feature_matrix is None:
+            pytest.skip("Baseline feature matrix not available for mutation test.")
+
+        X_before = baseline.feature_matrix.copy()
+        y = baseline.actual_per.copy()
+        receptor_names = baseline.receptor_names
+
+        if not receptor_names:
+            pytest.skip("No receptors available for ablation test.")
+
+        X_ablated, _ = apply_receptor_ablation(
+            X_before,
+            receptor_names,
+            [receptor_names[0]],
+        )
+
+        scaler = StandardScaler()
+        scaler.fit(X_before)
+        _weights, _r2, _mse, _lam, _pred = fit_lasso_with_fixed_scaler(
+            X=X_ablated,
+            y=y,
+            receptor_names=receptor_names,
+            scaler=scaler,
+            lambda_range=np.array([0.1], dtype=np.float64),
+            cv_folds=2,
+        )
+
+        try:
+            baseline_repeat = predictor.fit_behavior(
+                condition_name="opto_hex",
+                lambda_range=[0.1],
+                cv_folds=2,
+            )
+        except ValueError as exc:
+            pytest.skip(f"Insufficient data for repeat fit: {exc}")
+
+        assert np.array_equal(X_before, baseline.feature_matrix)
+        assert np.array_equal(X_before, baseline_repeat.feature_matrix)
+
+    def test_delta_prediction_not_constant(self, mock_door_cache, tmp_path):
+        csv_content = """dataset,Hexanol,Benzaldehyde,Linalool,Citral
+opto_hex,0.8,0.2,0.4,0.6
+hex_control,0.1,0.0,0.05,0.3
+"""
+        csv_path = tmp_path / "delta_variation.csv"
+        csv_path.write_text(csv_content)
+
+        predictor = LassoBehavioralPredictor(
+            doorcache_path=str(mock_door_cache),
+            behavior_csv_path=str(csv_path),
+            scale_features=True,
+            scale_targets=False,
+        )
+
+        results = predictor.fit_behavior(
+            condition_name="opto_hex",
+            lambda_range=[1e-4, 1e-3],
+            cv_folds=2,
+            subtract_control=True,
+            missing_control_policy="skip",
+        )
+
+        assert np.std(results.actual_per) > 1e-6
+        assert np.std(results.predicted_per) > 1e-6

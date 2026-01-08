@@ -1197,3 +1197,306 @@ class LassoBehavioralPredictor:
             plt.close()
         else:
             plt.show()
+
+
+# ============================================================================
+# LASSO Ablation/Robustness Helpers
+# ============================================================================
+
+
+def resolve_receptor_names(
+    requested_receptors: List[str],
+    available_receptors: List[str],
+    strict: bool = True,
+) -> Tuple[List[str], List[str]]:
+    """
+    Resolve receptor names using case-insensitive exact matching.
+
+    Args:
+        requested_receptors: User-provided receptor names
+        available_receptors: Valid receptor names from encoder
+        strict: If True, raise error on any unmatched receptors
+
+    Returns:
+        Tuple of (matched_names, unmatched_names)
+        - matched_names: Successfully matched receptor names (in available order)
+        - unmatched_names: Could not be matched
+
+    Raises:
+        ValueError: If strict=True and any receptors are unmatched
+
+    Example:
+        >>> resolve_receptor_names(
+        ...     ["Or42b", "OR47B", "Or99x"],
+        ...     ["Or42b", "Or47b", "Or22a"],
+        ...     strict=False
+        ... )
+        (["Or42b", "Or47b"], ["Or99x"])
+    """
+    # Build case-insensitive lookup: lowercase -> original name
+    lower_to_original: Dict[str, str] = {}
+    for receptor in available_receptors:
+        lower_to_original[receptor.lower()] = receptor
+
+    matched: List[str] = []
+    unmatched: List[str] = []
+
+    for requested in requested_receptors:
+        requested_clean = requested.strip()
+        if not requested_clean:
+            continue
+
+        # Try case-insensitive exact match
+        key = requested_clean.lower()
+        if key in lower_to_original:
+            canonical = lower_to_original[key]
+            if canonical not in matched:
+                matched.append(canonical)
+            if requested_clean != canonical:
+                logger.debug(
+                    f"Receptor name normalized: '{requested_clean}' -> '{canonical}'"
+                )
+        else:
+            unmatched.append(requested_clean)
+
+    if strict and unmatched:
+        raise ValueError(
+            f"Could not resolve the following receptors (case-insensitive): "
+            f"{unmatched}. Available receptors include: "
+            f"{available_receptors[:10]}{'...' if len(available_receptors) > 10 else ''}"
+        )
+
+    return matched, unmatched
+
+
+def apply_receptor_ablation(
+    X: np.ndarray,
+    receptor_names: List[str],
+    receptors_to_ablate: List[str],
+    ablation_value: float = 0.0,
+) -> Tuple[np.ndarray, List[int]]:
+    """
+    Set specified receptor channels to ablation_value.
+
+    Args:
+        X: Feature matrix (n_samples, n_receptors)
+        receptor_names: List of receptor names corresponding to X columns
+        receptors_to_ablate: Receptor names to ablate (case-insensitive)
+        ablation_value: Value to set ablated channels (default: 0.0)
+
+    Returns:
+        Tuple of (X_ablated, ablated_indices)
+        - X_ablated: Copy of X with ablated channels set to ablation_value
+        - ablated_indices: Column indices that were ablated
+
+    Raises:
+        ValueError: If any receptor in receptors_to_ablate not found
+
+    Example:
+        >>> X = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        >>> X_abl, idx = apply_receptor_ablation(
+        ...     X, ["Or42b", "Or47b", "Or22a"], ["Or42b", "Or22a"]
+        ... )
+        >>> X_abl
+        array([[0., 2., 0.],
+               [0., 5., 0.]])
+        >>> idx
+        [0, 2]
+    """
+    # Resolve receptor names (strict mode)
+    matched, unmatched = resolve_receptor_names(
+        receptors_to_ablate, receptor_names, strict=True
+    )
+
+    # Find indices of matched receptors
+    name_to_idx = {name: i for i, name in enumerate(receptor_names)}
+    ablated_indices = [name_to_idx[r] for r in matched]
+
+    # Create ablated copy
+    X_ablated = X.copy()
+    for idx in ablated_indices:
+        X_ablated[:, idx] = ablation_value
+
+    logger.info(
+        f"Ablated {len(ablated_indices)} receptors: {matched} (indices: {ablated_indices})"
+    )
+
+    return X_ablated, ablated_indices
+
+
+def fit_lasso_with_fixed_scaler(
+    X: np.ndarray,
+    y: np.ndarray,
+    receptor_names: List[str],
+    scaler: Optional[StandardScaler],
+    lambda_range: np.ndarray,
+    cv_folds: int = 5,
+    random_state: int = 42,
+) -> Tuple[Dict[str, float], float, float, float, np.ndarray]:
+    """
+    Fit LASSO using a pre-fitted scaler for fair comparison.
+
+    This ensures that ablation/focus variants use the same feature
+    scaling as the baseline model, preventing confounding effects
+    from different normalization.
+
+    Args:
+        X: Feature matrix (n_samples, n_receptors)
+        y: Target values
+        receptor_names: List of receptor names corresponding to X columns
+        scaler: Pre-fitted StandardScaler (if None, fits new scaler)
+        lambda_range: Array of lambda values for LASSO CV
+        cv_folds: Number of cross-validation folds
+        random_state: Random seed for reproducibility
+
+    Returns:
+        Tuple of (lasso_weights, cv_r2, cv_mse, best_lambda, y_pred)
+        - lasso_weights: Dict of {receptor: weight} for non-zero coefficients
+        - cv_r2: Cross-validated R² score
+        - cv_mse: Cross-validated MSE
+        - best_lambda: Selected regularization parameter
+        - y_pred: Predictions on training data
+
+    Example:
+        >>> # Baseline model - fits scaler
+        >>> scaler = StandardScaler().fit(X_baseline)
+        >>> weights_base, r2, mse, lam, pred = fit_lasso_with_fixed_scaler(
+        ...     X_baseline, y, names, scaler, lambdas
+        ... )
+        >>> # Ablated model - reuses same scaler
+        >>> weights_abl, r2_abl, mse_abl, lam_abl, pred_abl = fit_lasso_with_fixed_scaler(
+        ...     X_ablated, y, names, scaler, lambdas
+        ... )
+    """
+    # Apply scaling
+    if scaler is not None:
+        X_scaled = scaler.transform(X)
+    else:
+        X_scaled = X.copy()
+
+    # Adjust CV folds for small samples
+    n_samples = X_scaled.shape[0]
+    if n_samples < 10:
+        cv_folds_adjusted = n_samples  # LOOCV
+    else:
+        cv_folds_adjusted = min(cv_folds, n_samples)
+
+    # Fit LASSO with cross-validation
+    lasso_cv = LassoCV(
+        alphas=lambda_range,
+        cv=cv_folds_adjusted,
+        max_iter=10000,
+        random_state=random_state,
+    )
+    lasso_cv.fit(X_scaled, y)
+
+    best_lambda = lasso_cv.alpha_
+
+    # Refit with best lambda
+    lasso = Lasso(alpha=best_lambda, max_iter=10000, random_state=random_state)
+    lasso.fit(X_scaled, y)
+
+    # Predict
+    y_pred = lasso.predict(X_scaled)
+
+    # Extract non-zero coefficients
+    lasso_weights: Dict[str, float] = {}
+    for i, coef in enumerate(lasso.coef_):
+        if abs(coef) > 1e-6:
+            lasso_weights[receptor_names[i]] = float(coef)
+
+    # Compute cross-validated metrics
+    cv_r2_scores = cross_val_score(
+        lasso, X_scaled, y, cv=cv_folds_adjusted, scoring="r2"
+    )
+    cv_r2 = float(np.mean(cv_r2_scores))
+
+    cv_mse_scores = cross_val_score(
+        lasso, X_scaled, y, cv=cv_folds_adjusted, scoring="neg_mean_squared_error"
+    )
+    cv_mse = float(-np.mean(cv_mse_scores))
+
+    return lasso_weights, cv_r2, cv_mse, best_lambda, y_pred
+
+
+def restrict_to_receptors(
+    X: np.ndarray,
+    receptor_names: List[str],
+    receptors_to_keep: List[str],
+) -> Tuple[np.ndarray, List[str], List[int]]:
+    """
+    Restrict feature matrix to specified receptor subset.
+
+    Args:
+        X: Feature matrix (n_samples, n_receptors)
+        receptor_names: List of receptor names corresponding to X columns
+        receptors_to_keep: Receptor names to retain (case-insensitive)
+
+    Returns:
+        Tuple of (X_restricted, kept_receptor_names, kept_indices)
+        - X_restricted: Subset of X with only specified columns
+        - kept_receptor_names: Receptor names in kept order
+        - kept_indices: Original column indices that were kept
+
+    Raises:
+        ValueError: If any receptor in receptors_to_keep not found
+
+    Example:
+        >>> X = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        >>> X_res, names, idx = restrict_to_receptors(
+        ...     X, ["Or42b", "Or47b", "Or22a"], ["Or47b", "Or22a"]
+        ... )
+        >>> X_res
+        array([[2., 3.],
+               [5., 6.]])
+        >>> names
+        ['Or47b', 'Or22a']
+    """
+    # Resolve receptor names (strict mode)
+    matched, unmatched = resolve_receptor_names(
+        receptors_to_keep, receptor_names, strict=True
+    )
+
+    # Find indices of matched receptors (in original order)
+    name_to_idx = {name: i for i, name in enumerate(receptor_names)}
+    kept_indices = [name_to_idx[r] for r in matched]
+
+    # Sort indices to preserve original column order
+    kept_indices_sorted = sorted(kept_indices)
+    kept_receptor_names = [receptor_names[i] for i in kept_indices_sorted]
+
+    # Restrict X to kept columns
+    X_restricted = X[:, kept_indices_sorted]
+
+    logger.info(
+        f"Restricted to {len(kept_indices_sorted)} receptors: {kept_receptor_names}"
+    )
+
+    return X_restricted, kept_receptor_names, kept_indices_sorted
+
+
+def get_top_receptors_by_weight(
+    lasso_weights: Dict[str, float],
+    n: int,
+) -> List[str]:
+    """
+    Get top N receptors ranked by absolute LASSO weight.
+
+    Args:
+        lasso_weights: Dictionary of {receptor: weight}
+        n: Number of top receptors to return
+
+    Returns:
+        List of receptor names sorted by absolute weight (descending)
+
+    Example:
+        >>> weights = {"Or42b": 0.5, "Or47b": -0.8, "Or22a": 0.3}
+        >>> get_top_receptors_by_weight(weights, 2)
+        ['Or47b', 'Or42b']
+    """
+    sorted_receptors = sorted(
+        lasso_weights.items(),
+        key=lambda x: abs(x[1]),
+        reverse=True,
+    )
+    return [r for r, _ in sorted_receptors[:n]]

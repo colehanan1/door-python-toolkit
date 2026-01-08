@@ -645,6 +645,20 @@ opto_benz_1,0.25,0.02,0.44,0.59,0.12
 - Zero weights → receptors excluded by LASSO (not predictive)
 - Sparse circuits (3-7 receptors) suggest minimal testable hypotheses
 
+**Robustness Analysis:** Two CLI scripts assess circuit robustness. *Ablation* (`lasso_with_ablations.py`) tests necessity by zeroing out receptors and measuring MSE increase. *Focus mode* (`lasso_with_focus_mode.py`) tests sufficiency by refitting LASSO on only the top-N receptors to generate MSE vs N curves.
+
+```bash
+# Ablation: test if removing Or22b/Or49a degrades the model
+python scripts/lasso_with_ablations.py --door_cache door_cache \
+    --behavior_csv reaction_rates.csv --condition opto_hex \
+    --ablate Or22b Or49a --ablation_set_mode single --output_dir ablation_out
+
+# Focus: test if top 1-5 receptors are sufficient
+python scripts/lasso_with_focus_mode.py --door_cache door_cache \
+    --behavior_csv reaction_rates.csv --condition opto_hex \
+    --topn_list 1 2 3 5 --output_dir focus_out
+```
+
 ### CLI Usage
 
 ```bash

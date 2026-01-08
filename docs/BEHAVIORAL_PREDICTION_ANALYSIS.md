@@ -210,6 +210,55 @@ From the comparison output:
 
 ---
 
+## 5.5 Robustness Analysis Scripts
+
+Two scripts assess how stable the LASSO-identified receptor circuits are:
+
+### Ablation Analysis
+
+Test whether the model degrades when specific receptors are ablated (zeroed out):
+
+```bash
+conda activate DoOR
+python scripts/lasso_with_ablations.py \
+    --door_cache door_cache \
+    --behavior_csv /path/to/reaction_rates_summary_unordered.csv \
+    --condition opto_hex \
+    --output_dir ablation_results \
+    --ablate Or22b Or49a \
+    --ablation_set_mode single
+```
+
+**Key arguments:**
+- `--ablate`: Receptor(s) to ablate (case-insensitive)
+- `--ablation_set_mode`: `single` (ablate each individually) or `all_in_one` (ablate together)
+- `--missing_receptor_policy`: `error`, `warn`, or `skip` for unmatched receptors
+
+**Outputs:** `baseline_model.json`, `ablation_summary.csv`, per-ablation folders, `ablation_comparison.png`
+
+### Focus Mode Analysis
+
+Test whether top-N receptors are *sufficient* to maintain model performance:
+
+```bash
+conda activate DoOR
+python scripts/lasso_with_focus_mode.py \
+    --door_cache door_cache \
+    --behavior_csv /path/to/reaction_rates_summary_unordered.csv \
+    --condition opto_hex \
+    --output_dir focus_results \
+    --topn_list 1 2 3 5 10
+```
+
+**Key arguments:**
+- `--topn_list`: Test subsets of top 1, 2, 3, ... receptors
+- `--focus_receptors`: Alternatively, specify exact receptors to include
+- `--baseline_select_by`: `abs_weight` (default) or `weight` for ranking
+
+**Outputs:** `baseline_model.json`, `focus_curve.csv`, `focus_curve.png`, per-N folders
+
+---
+
 ## 6. Biological Insights
 
 ### Top Receptor Candidates for Experimental Validation

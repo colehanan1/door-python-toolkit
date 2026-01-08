@@ -28,11 +28,34 @@ hex_control,0.07,0.00,0.47,0.02,0.00
 
 
 @pytest.fixture
+def control_behavioral_csv(tmp_path):
+    """Create mock behavioral CSV with opto/control rows for subtraction tests."""
+    csv_content = """dataset,Hexanol,Benzaldehyde,Linalool,Citral
+opto_hex,0.8,0.2,0.4,0.6
+hex_control,0.1,,0.05,0.3
+"""
+    csv_path = tmp_path / "test_behavior_control.csv"
+    csv_path.write_text(csv_content)
+    return csv_path
+
+
+@pytest.fixture
 def lasso_predictor(mock_door_cache, mock_behavioral_csv):
     """Create LassoBehavioralPredictor instance for testing."""
     return LassoBehavioralPredictor(
         doorcache_path=str(mock_door_cache),
         behavior_csv_path=str(mock_behavioral_csv),
+        scale_features=True,
+        scale_targets=False,
+    )
+
+
+@pytest.fixture
+def control_lasso_predictor(mock_door_cache, control_behavioral_csv):
+    """Create LassoBehavioralPredictor for control subtraction tests."""
+    return LassoBehavioralPredictor(
+        doorcache_path=str(mock_door_cache),
+        behavior_csv_path=str(control_behavioral_csv),
         scale_features=True,
         scale_targets=False,
     )
@@ -418,3 +441,66 @@ opto_minimal,0.5,0.3
 
         with pytest.raises(ValueError, match="Insufficient data"):
             predictor.fit_behavior("opto_minimal", lambda_range=[0.1], cv_folds=5)
+
+
+class TestLassoBehavioralPredictorControlSubtraction:
+    """Tests for control-subtracted LASSO fits."""
+
+    def test_subtract_control_skip_aligns_and_drops_nans(self, control_lasso_predictor):
+        results = control_lasso_predictor.fit_behavior(
+            condition_name="opto_hex",
+            lambda_range=[0.1],
+            cv_folds=2,
+            subtract_control=True,
+            missing_control_policy="skip",
+        )
+
+        assert "Benzaldehyde" not in results.test_odorants
+        assert len(results.test_odorants) == 3
+
+        actual_map = dict(zip(results.test_odorants, results.actual_per))
+        assert actual_map["Hexanol"] == pytest.approx(0.7)
+        assert actual_map["Linalool"] == pytest.approx(0.35)
+        assert actual_map["Citral"] == pytest.approx(0.3)
+
+    def test_subtract_control_zero_fills_missing_control(self, control_lasso_predictor):
+        results = control_lasso_predictor.fit_behavior(
+            condition_name="opto_hex",
+            lambda_range=[0.1],
+            cv_folds=2,
+            subtract_control=True,
+            missing_control_policy="zero",
+        )
+
+        assert "Benzaldehyde" in results.test_odorants
+        assert len(results.test_odorants) == 4
+
+        actual_map = dict(zip(results.test_odorants, results.actual_per))
+        assert actual_map["Benzaldehyde"] == pytest.approx(0.2)
+
+    def test_subtract_control_error_raises_on_missing_control_values(
+        self, control_lasso_predictor
+    ):
+        with pytest.raises(ValueError, match="missing values"):
+            control_lasso_predictor.fit_behavior(
+                condition_name="opto_hex",
+                lambda_range=[0.1],
+                cv_folds=2,
+                subtract_control=True,
+                missing_control_policy="error",
+            )
+
+    def test_subtract_control_missing_control_row_warns_or_errors(
+        self, control_lasso_predictor
+    ):
+        control_lasso_predictor.behavioral_data = control_lasso_predictor.behavioral_data.drop(
+            index=["hex_control"]
+        )
+
+        with pytest.raises(ValueError, match="control"):
+            control_lasso_predictor.fit_behavior(
+                condition_name="opto_hex",
+                lambda_range=[0.1],
+                cv_folds=2,
+                subtract_control=True,
+            )

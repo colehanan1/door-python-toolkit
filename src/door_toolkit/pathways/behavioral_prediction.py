@@ -16,11 +16,12 @@ Classes:
 
 import json
 import logging
+import re
 import warnings
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -282,6 +283,9 @@ class BehaviorModelResults:
         actual_per: Actual PER values
         predicted_per: Predicted PER values
         receptor_coverage: Number of receptors with data for trained odorant
+        subtract_control: Whether target PER values were control-subtracted
+        control_condition: Control condition used for subtraction (if any)
+        n_pairs_used: Number of matched opto/control odorant pairs used
     """
 
     condition_name: str
@@ -298,6 +302,9 @@ class BehaviorModelResults:
     receptor_coverage: int
     feature_matrix: Optional[np.ndarray] = None
     receptor_names: List[str] = field(default_factory=list)
+    subtract_control: bool = False
+    control_condition: Optional[str] = None
+    n_pairs_used: int = 0
 
     def get_top_receptors(self, n: int = 10) -> List[Tuple[str, float]]:
         """
@@ -467,6 +474,9 @@ class BehaviorModelResults:
             "cv_mse": float(self.cv_mse),
             "n_receptors_selected": int(self.n_receptors_selected),
             "receptor_coverage": int(self.receptor_coverage),
+            "subtract_control": bool(self.subtract_control),
+            "control_condition": self.control_condition,
+            "n_pairs_used": int(self.n_pairs_used),
             "lasso_weights": {k: float(v) for k, v in self.lasso_weights.items()},
             "top_10_receptors": [
                 {"receptor": r, "weight": float(w)} for r, w in self.get_top_receptors(10)
@@ -585,6 +595,14 @@ class LassoBehavioralPredictor:
         "opto_3-oct": "3-Octonol",
         "opto_AIR": "AIR",
         "opto_3oct": "3-Octonol",  # Alternative naming
+    }
+
+    # Matched opto → control mapping for control-subtracted fits.
+    # Local mapping because no shared helper exists in the codebase today.
+    OPTO_CONTROL_MAPPING = {
+        "opto_hex": "hex_control",
+        "opto_EB": "EB_control",
+        "opto_benz_1": "Benz_control",
     }
 
     def __init__(
@@ -755,6 +773,42 @@ class LassoBehavioralPredictor:
         csv_name_clean = csv_odorant_name.lower().replace("_", "").replace(" ", "").replace("-", "")
         return self.odorant_to_door.get(csv_name_clean)
 
+    @staticmethod
+    def _normalize_dataset_name(dataset_name: str) -> str:
+        """Normalize dataset labels for case/format-insensitive matching."""
+        return re.sub(r"[^a-z0-9]+", "", str(dataset_name).lower())
+
+    def _resolve_dataset_name(self, dataset_name: str) -> Optional[str]:
+        """
+        Resolve a dataset label to the exact index entry in behavioral_data.
+
+        Returns None if no match is found; raises if the match is ambiguous.
+        """
+        if dataset_name in self.behavioral_data.index:
+            return dataset_name
+
+        normalized = self._normalize_dataset_name(dataset_name)
+        matches = [
+            idx
+            for idx in self.behavioral_data.index
+            if self._normalize_dataset_name(idx) == normalized
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ValueError(
+                f"Ambiguous condition '{dataset_name}' matches multiple datasets: {matches}. "
+                "Please specify the exact dataset name."
+            )
+        return None
+
+    def _infer_control_condition(self, condition_name: str) -> Optional[str]:
+        """Infer matched control condition from known opto/control pairs."""
+        mapping = {
+            self._normalize_dataset_name(k): v for k, v in self.OPTO_CONTROL_MAPPING.items()
+        }
+        return mapping.get(self._normalize_dataset_name(condition_name))
+
     def get_receptor_profile(
         self, odorant_name: str, fill_missing: float = 0.0
     ) -> Tuple[np.ndarray, int]:
@@ -808,6 +862,9 @@ class LassoBehavioralPredictor:
         lambda_range: Optional[List[float]] = None,
         cv_folds: int = 5,
         prediction_mode: str = "test_odorant",
+        subtract_control: bool = False,
+        control_condition: Optional[str] = None,
+        missing_control_policy: Literal["skip", "zero", "error"] = "skip",
     ) -> BehaviorModelResults:
         """
         Fit LASSO model to predict PER from receptor profiles.
@@ -821,6 +878,12 @@ class LassoBehavioralPredictor:
                 - "test_odorant": Use test odorant receptor profiles (default)
                 - "trained_odorant": Use trained odorant receptor profile
                 - "interaction": Use element-wise product of trained × test
+            subtract_control: If True, fit on PER(opto) - PER(control)
+            control_condition: Optional control dataset override
+            missing_control_policy: How to handle missing control values:
+                - "skip": use only odorants present in both opto/control
+                - "zero": treat missing control values as 0 (opto must be present)
+                - "error": raise if control is missing where opto is present
 
         Returns:
             BehaviorModelResults object with fitted model and metrics
@@ -832,18 +895,90 @@ class LassoBehavioralPredictor:
         """
         logger.info(f"Fitting LASSO model for condition: {condition_name}")
 
-        # Get behavioral responses for this condition
-        if condition_name not in self.behavioral_data.index:
+        resolved_condition = self._resolve_dataset_name(condition_name)
+        if resolved_condition is None:
             raise ValueError(f"Condition '{condition_name}' not found in behavioral data")
+        condition_name = resolved_condition
 
-        per_responses = self.behavioral_data.loc[condition_name]
+        control_condition_resolved: Optional[str] = None
+        n_pairs_used = 0
 
-        # Filter out NaN and untested odorants
-        valid_odorants = per_responses.dropna()
-        if len(valid_odorants) == 0:
-            raise ValueError(f"No valid PER data for condition '{condition_name}'")
+        if subtract_control:
+            if missing_control_policy not in {"skip", "zero", "error"}:
+                raise ValueError(
+                    f"Unknown missing_control_policy '{missing_control_policy}'. "
+                    "Expected one of: skip, zero, error."
+                )
 
-        logger.info(f"Found {len(valid_odorants)} valid test odorants")
+            if control_condition is not None:
+                control_condition_resolved = self._resolve_dataset_name(control_condition)
+                if control_condition_resolved is None:
+                    raise ValueError(
+                        f"Control condition '{control_condition}' not found in behavioral data"
+                    )
+            else:
+                control_candidate = self._infer_control_condition(condition_name)
+                if control_candidate is None:
+                    raise ValueError(
+                        f"No matched control mapping for '{condition_name}'. "
+                        "Provide control_condition or set subtract_control=False."
+                    )
+                control_condition_resolved = self._resolve_dataset_name(control_candidate)
+                if control_condition_resolved is None:
+                    raise ValueError(
+                        f"Matched control '{control_candidate}' not found in behavioral data"
+                    )
+
+            if control_condition_resolved == condition_name:
+                raise ValueError(
+                    f"Control condition '{control_condition_resolved}' matches opto condition "
+                    f"'{condition_name}'."
+                )
+
+            per_opto = self.behavioral_data.loc[condition_name]
+            per_ctrl = self.behavioral_data.loc[control_condition_resolved]
+
+            if missing_control_policy == "skip":
+                valid_mask = per_opto.notna() & per_ctrl.notna()
+                valid_odorants = (per_opto - per_ctrl)[valid_mask]
+            elif missing_control_policy == "zero":
+                valid_mask = per_opto.notna()
+                per_ctrl_filled = per_ctrl.fillna(0.0)
+                valid_odorants = (per_opto - per_ctrl_filled)[valid_mask]
+            else:
+                missing_mask = per_opto.notna() & per_ctrl.isna()
+                if missing_mask.any():
+                    missing_odorants = [str(o) for o in per_opto.index[missing_mask]]
+                    preview = ", ".join(missing_odorants[:5])
+                    if len(missing_odorants) > 5:
+                        preview = f"{preview} (and {len(missing_odorants) - 5} more)"
+                    raise ValueError(
+                        f"Control condition '{control_condition_resolved}' has missing values for "
+                        f"odorants present in '{condition_name}': {preview}"
+                    )
+                valid_mask = per_opto.notna() & per_ctrl.notna()
+                valid_odorants = (per_opto - per_ctrl)[valid_mask]
+
+            if len(valid_odorants) == 0:
+                raise ValueError(
+                    f"No valid opto/control pairs for condition '{condition_name}' "
+                    f"and control '{control_condition_resolved}'."
+                )
+
+            n_pairs_used = int(len(valid_odorants))
+            logger.info(
+                f"Using control condition '{control_condition_resolved}' with policy "
+                f"'{missing_control_policy}': {n_pairs_used} odorants after alignment"
+            )
+        else:
+            per_responses = self.behavioral_data.loc[condition_name]
+
+            # Filter out NaN and untested odorants
+            valid_odorants = per_responses.dropna()
+            if len(valid_odorants) == 0:
+                raise ValueError(f"No valid PER data for condition '{condition_name}'")
+
+            logger.info(f"Found {len(valid_odorants)} valid test odorants")
 
         # Auto-detect trained odorant (best-effort for all prediction modes)
         # Decision: Attempt auto-detection for all modes to populate results.trained_odorant
@@ -996,6 +1131,9 @@ class LassoBehavioralPredictor:
             receptor_coverage=trained_coverage,
             feature_matrix=X,
             receptor_names=list(active_receptor_names),
+            subtract_control=subtract_control,
+            control_condition=control_condition_resolved,
+            n_pairs_used=n_pairs_used,
         )
 
         return results

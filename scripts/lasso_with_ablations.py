@@ -702,7 +702,12 @@ def main() -> int:
         })
 
     summary_df = pd.DataFrame(summary_rows)
-    summary_path = output_dir / "ablation_summary.csv"
+
+    # Create ablations subfolder for summary files
+    ablations_dir = output_dir / "ablations"
+    ablations_dir.mkdir(parents=True, exist_ok=True)
+
+    summary_path = ablations_dir / "ablation_summary.csv"
     summary_df.to_csv(summary_path, index=False)
     logger.info(f"Saved summary to {summary_path}")
 
@@ -710,7 +715,7 @@ def main() -> int:
     plot_ablation_comparison(
         baseline_result=baseline_result,
         ablation_results=ablation_results,
-        output_dir=output_dir,
+        output_dir=ablations_dir,
         condition=args.condition,
     )
 

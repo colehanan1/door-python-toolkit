@@ -529,6 +529,14 @@ behavioral_prediction_results/
 
 ---
 
+## Stability Layer (LOOO)
+Run: `conda run -n DoOR python diagnostics/run_stability_and_metrics.py --door_cache door_cache --behavior_csv /path/to/reaction_rates_summary_unordered.csv --conditions opto_hex,opto_EB,opto_benz_1,opto_ACV,opto_3-oct --prediction_mode test_odorant --seed 1337 --subtract_control --missing_control_policy skip`  
+Outputs: `diagnostics/stability_<timestamp>/SUMMARY.md` and `EXPERIMENT_SHORTLIST.md`.  
+Use normalized metrics (`nmse`, `rmse_over_y_std`) for cross-condition comparisons.  
+ΔPER runs are skipped for conditions without mapped controls when `missing_control_policy=skip`.
+
+---
+
 ## Contact & Support
 
 **Questions about this analysis?**

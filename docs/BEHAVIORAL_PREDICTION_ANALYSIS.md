@@ -240,6 +240,26 @@ python scripts/lasso_with_ablations.py \
 
 Test whether top-N receptors are *sufficient* to maintain model performance:
 
+---
+
+## 5.6 Control-Subtracted (ΔPER) Runs
+
+To fit LASSO on control-subtracted targets (ΔPER = opto − control), use the CLI:
+
+```
+python scripts/run_lasso_behavioral_prediction.py \
+  --door_cache door_cache \
+  --behavior_csv /path/to/reaction_rates_summary_unordered.csv \
+  --condition opto_hex \
+  --subtract_control \
+  --missing_control_policy skip \
+  --output_dir outputs/lasso_behavioral_prediction
+```
+
+Use `--control_condition` to override the default opto→control mapping, and
+`--also_run_raw` to generate a side-by-side comparison summary CSV.
+If a condition lacks a matched control, the CLI logs a warning and falls back to raw mode.
+
 ```bash
 conda activate DoOR
 python scripts/lasso_with_focus_mode.py \

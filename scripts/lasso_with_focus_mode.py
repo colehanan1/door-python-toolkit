@@ -102,9 +102,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--condition",
-        type=str,
         required=True,
-        help="Optogenetic condition name (e.g., opto_hex)",
+        action="append",
+        help="Condition name(s). Repeat flag or pass comma-separated list.",
     )
     parser.add_argument(
         "--output_dir",
@@ -142,6 +142,29 @@ def parse_args() -> argparse.Namespace:
         default="test_odorant",
         help="Feature extraction mode (default: test_odorant)",
     )
+    parser.add_argument(
+        "--subtract_control",
+        action="store_true",
+        help="Fit on ΔPER (opto - control) instead of raw PER.",
+    )
+    parser.add_argument(
+        "--control_condition",
+        type=str,
+        default=None,
+        help="Optional control dataset override (default: infer from opto condition).",
+    )
+    parser.add_argument(
+        "--missing_control_policy",
+        type=str,
+        choices=["skip", "zero", "error"],
+        default="error",
+        help="How to handle missing control values (default: error).",
+    )
+    parser.add_argument(
+        "--debug_stats",
+        action="store_true",
+        help="Log y stats, chosen lambda, and nonzero coefficient count.",
+    )
 
     # LASSO parameters
     parser.add_argument(
@@ -178,6 +201,19 @@ def parse_args() -> argparse.Namespace:
     )
 
     return parser.parse_args()
+
+
+def _parse_conditions(values: List[str]) -> List[str]:
+    conditions: List[str] = []
+    seen = set()
+    for value in values:
+        for token in value.split(","):
+            token = token.strip()
+            if not token or token in seen:
+                continue
+            conditions.append(token)
+            seen.add(token)
+    return conditions
 
 
 def save_baseline_json(
@@ -243,6 +279,111 @@ def save_focus_json(
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     logger.info(f"Saved focus result to {filepath}")
+
+
+def _build_valid_odorants(
+    predictor: LassoBehavioralPredictor,
+    condition: str,
+    subtract_control: bool,
+    control_condition: Optional[str],
+    missing_control_policy: str,
+) -> Tuple[pd.Series, str, Optional[str], int]:
+    resolved_condition = predictor._resolve_dataset_name(condition)
+    if resolved_condition is None:
+        raise ValueError(f"Condition '{condition}' not found in behavioral data")
+
+    if not subtract_control:
+        per_responses = predictor.behavioral_data.loc[resolved_condition]
+        valid_odorants = per_responses.dropna()
+        if len(valid_odorants) == 0:
+            raise ValueError(f"No valid PER data for condition '{resolved_condition}'")
+        return valid_odorants, resolved_condition, None, 0
+
+    if missing_control_policy not in {"skip", "zero", "error"}:
+        raise ValueError(
+            f"Unknown missing_control_policy '{missing_control_policy}'. "
+            "Expected one of: skip, zero, error."
+        )
+
+    if control_condition is not None:
+        control_resolved = predictor._resolve_dataset_name(control_condition)
+        if control_resolved is None:
+            raise ValueError(f"Control condition '{control_condition}' not found in behavioral data")
+    else:
+        control_candidate = predictor._infer_control_condition(resolved_condition)
+        if control_candidate is None:
+            raise ValueError(
+                f"No matched control mapping for '{resolved_condition}'. "
+                "Provide --control_condition or disable --subtract_control."
+            )
+        control_resolved = predictor._resolve_dataset_name(control_candidate)
+        if control_resolved is None:
+            raise ValueError(f"Matched control '{control_candidate}' not found in behavioral data")
+
+    if control_resolved == resolved_condition:
+        raise ValueError(
+            f"Control condition '{control_resolved}' matches opto condition '{resolved_condition}'."
+        )
+
+    per_opto = predictor.behavioral_data.loc[resolved_condition]
+    per_ctrl = predictor.behavioral_data.loc[control_resolved]
+
+    if missing_control_policy == "skip":
+        valid_mask = per_opto.notna() & per_ctrl.notna()
+        valid_odorants = (per_opto - per_ctrl)[valid_mask]
+    elif missing_control_policy == "zero":
+        valid_mask = per_opto.notna()
+        per_ctrl_filled = per_ctrl.fillna(0.0)
+        valid_odorants = (per_opto - per_ctrl_filled)[valid_mask]
+    else:
+        missing_mask = per_opto.notna() & per_ctrl.isna()
+        if missing_mask.any():
+            missing_odorants = [str(o) for o in per_opto.index[missing_mask]]
+            preview = ", ".join(missing_odorants[:5])
+            if len(missing_odorants) > 5:
+                preview = f"{preview} (and {len(missing_odorants) - 5} more)"
+            raise ValueError(
+                f"Control condition '{control_resolved}' has missing values for odorants "
+                f"present in '{resolved_condition}': {preview}"
+            )
+        valid_mask = per_opto.notna() & per_ctrl.notna()
+        valid_odorants = (per_opto - per_ctrl)[valid_mask]
+
+    if len(valid_odorants) == 0:
+        raise ValueError(
+            f"No valid opto/control pairs for '{resolved_condition}' and '{control_resolved}'."
+        )
+
+    return valid_odorants, resolved_condition, control_resolved, int(len(valid_odorants))
+
+
+def _log_debug_stats(
+    *,
+    condition: str,
+    mode: str,
+    y: np.ndarray,
+    n_pairs_used: int,
+    lambda_value: float,
+    n_nonzero: int,
+) -> None:
+    logger.info(
+        "[debug] %s %s y_stats: n=%d mean=%.4f std=%.4f min=%.4f max=%.4f n_pairs=%d",
+        condition,
+        mode,
+        len(y),
+        float(np.mean(y)),
+        float(np.std(y)),
+        float(np.min(y)),
+        float(np.max(y)),
+        n_pairs_used,
+    )
+    logger.info(
+        "[debug] %s %s lambda=%.6f n_nonzero=%d",
+        condition,
+        mode,
+        float(lambda_value),
+        int(n_nonzero),
+    )
 
 
 def plot_focus_curve(
@@ -336,6 +477,10 @@ def run_baseline(
     lambda_range: np.ndarray,
     cv_folds: int,
     scale_features: bool,
+    subtract_control: bool = False,
+    control_condition: Optional[str] = None,
+    missing_control_policy: str = "skip",
+    debug_stats: bool = False,
 ) -> Tuple[Dict[str, float], float, float, float, np.ndarray, np.ndarray, List[str], Optional[StandardScaler]]:
     """Run baseline LASSO fit (full receptor set).
 
@@ -344,27 +489,35 @@ def run_baseline(
     """
     logger.info(f"Fitting baseline model for condition: {condition}")
 
-    # Get behavioral responses
-    per_responses = predictor.behavioral_data.loc[condition]
-    valid_odorants = per_responses.dropna()
-
-    if len(valid_odorants) == 0:
-        raise ValueError(f"No valid PER data for condition '{condition}'")
+    valid_odorants, condition_resolved, control_resolved, n_pairs_used = _build_valid_odorants(
+        predictor,
+        condition=condition,
+        subtract_control=subtract_control,
+        control_condition=control_condition,
+        missing_control_policy=missing_control_policy,
+    )
+    if control_resolved:
+        logger.info(
+            "Using control condition '%s' with policy '%s': %d odorants after alignment",
+            control_resolved,
+            missing_control_policy,
+            n_pairs_used,
+        )
 
     # Extract features based on prediction mode
     if prediction_mode == "test_odorant":
         X, test_odorants, y = predictor._extract_test_odorant_features(valid_odorants)
     elif prediction_mode == "trained_odorant":
-        trained_odorant = predictor.CONDITION_ODORANT_MAPPING.get(condition)
+        trained_odorant = predictor.CONDITION_ODORANT_MAPPING.get(condition_resolved)
         if not trained_odorant:
-            raise ValueError(f"Could not determine trained odorant for {condition}")
+            raise ValueError(f"Could not determine trained odorant for {condition_resolved}")
         X, test_odorants, y = predictor._extract_trained_odorant_features(
             trained_odorant, valid_odorants
         )
     elif prediction_mode == "interaction":
-        trained_odorant = predictor.CONDITION_ODORANT_MAPPING.get(condition)
+        trained_odorant = predictor.CONDITION_ODORANT_MAPPING.get(condition_resolved)
         if not trained_odorant:
-            raise ValueError(f"Could not determine trained odorant for {condition}")
+            raise ValueError(f"Could not determine trained odorant for {condition_resolved}")
         X, test_odorants, y = predictor._extract_interaction_features(
             trained_odorant, valid_odorants
         )
@@ -398,6 +551,15 @@ def run_baseline(
         f"Baseline: R² = {cv_r2:.4f}, MSE = {cv_mse:.4f}, "
         f"λ = {best_lambda:.6f}, {len(weights)} receptors selected"
     )
+    if debug_stats:
+        _log_debug_stats(
+            condition=condition_resolved,
+            mode="baseline",
+            y=y,
+            n_pairs_used=n_pairs_used,
+            lambda_value=best_lambda,
+            n_nonzero=len(weights),
+        )
 
     return weights, cv_r2, cv_mse, best_lambda, X, y, receptor_names, scaler
 
@@ -412,6 +574,7 @@ def run_focus(
     scale_features: bool,
     baseline_r2: float,
     baseline_mse: float,
+    debug_stats: bool = False,
 ) -> FocusResult:
     """Run LASSO with restricted receptor set."""
     n_receptors = len(receptors_to_keep)
@@ -457,6 +620,15 @@ def run_focus(
         f"Focus N={n_receptors}: R² = {cv_r2:.4f} (Δ = {result.delta_r2:+.4f}), "
         f"MSE = {cv_mse:.4f} (Δ = {result.delta_mse:+.4f})"
     )
+    if debug_stats:
+        _log_debug_stats(
+            condition=f"focus_n{n_receptors}",
+            mode="focus",
+            y=y,
+            n_pairs_used=0,
+            lambda_value=best_lambda,
+            n_nonzero=len(weights),
+        )
 
     return result
 
@@ -481,211 +653,271 @@ def main() -> int:
         scale_targets=False,
     )
 
-    # Validate condition
-    if args.condition not in predictor.behavioral_data.index:
-        logger.error(
-            f"Condition '{args.condition}' not found. "
-            f"Available: {list(predictor.behavioral_data.index)}"
-        )
+    conditions = _parse_conditions(args.condition)
+    if not conditions:
+        logger.error("No valid conditions provided.")
         return 1
 
-    # Create output directory
-    output_dir = Path(args.output_dir) / args.condition
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Run baseline
-    try:
-        (
-            baseline_weights,
-            baseline_r2,
-            baseline_mse,
-            baseline_lambda,
-            X,
-            y,
-            receptor_names,
-            scaler,
-        ) = run_baseline(
-            predictor=predictor,
-            condition=args.condition,
-            prediction_mode=args.prediction_mode,
-            lambda_range=lambda_range,
-            cv_folds=args.cv_folds,
-            scale_features=args.scale_features,
-        )
-    except Exception as e:
-        logger.error(f"Baseline fit failed: {e}")
-        return 1
-
-    # Save baseline
-    save_baseline_json(
-        baseline_weights=baseline_weights,
-        baseline_r2=baseline_r2,
-        baseline_mse=baseline_mse,
-        baseline_lambda=baseline_lambda,
-        condition=args.condition,
-        prediction_mode=args.prediction_mode,
-        n_samples=X.shape[0],
-        n_receptors_total=X.shape[1],
-        filepath=output_dir / "baseline_model.json",
-    )
-
-    # Determine focus runs
-    focus_results: List[FocusResult] = []
-
-    if args.focus_receptors:
-        # Use explicit receptor list
-        focus_receptors = [r.strip() for r in args.focus_receptors.split(",") if r.strip()]
-        logger.info(f"Using explicit focus receptors: {focus_receptors}")
-
+    exit_code = 0
+    for condition in conditions:
         try:
-            result = run_focus(
-                X=X,
-                y=y,
-                receptor_names=receptor_names,
-                receptors_to_keep=focus_receptors,
-                lambda_range=lambda_range,
-                cv_folds=args.cv_folds,
-                scale_features=args.scale_features,
-                baseline_r2=baseline_r2,
-                baseline_mse=baseline_mse,
+            resolved_condition = predictor._resolve_dataset_name(condition)
+        except ValueError as exc:
+            logger.error(str(exc))
+            exit_code = 1
+            continue
+
+        if resolved_condition is None:
+            logger.error(
+                "Condition '%s' not found. Available: %s",
+                condition,
+                list(predictor.behavioral_data.index),
             )
-            focus_results.append(result)
+            exit_code = 1
+            continue
 
-            # Save individual focus result
-            focus_dir = output_dir / f"focus_n{result.n_receptors}"
-            save_focus_json(
-                result=result,
-                condition=args.condition,
-                prediction_mode=args.prediction_mode,
-                n_samples=X.shape[0],
-                filepath=focus_dir / "model.json",
-            )
-
-        except Exception as e:
-            logger.error(f"Focus run failed: {e}")
-
-    else:
-        # Use topn_list
-        topn_list = [int(x.strip()) for x in args.topn_list.split(",")]
-        logger.info(f"Top-N values to test: {topn_list}")
-
-        # Get ranked receptors from baseline
-        if not baseline_weights:
-            logger.error("Baseline model has no non-zero weights, cannot determine top-N")
-            return 1
-
-        if args.baseline_select_by == "abs_weight":
-            ranked_receptors = get_top_receptors_by_weight(baseline_weights, len(baseline_weights))
-        else:
-            # stability mode would require multiple runs - fallback to abs_weight
-            logger.warning("stability mode not yet implemented, using abs_weight")
-            ranked_receptors = get_top_receptors_by_weight(baseline_weights, len(baseline_weights))
-
-        logger.info(f"Receptor ranking (top 10): {ranked_receptors[:10]}")
-
-        for n in topn_list:
-            if n > len(ranked_receptors):
+        if (
+            args.subtract_control
+            and args.missing_control_policy == "skip"
+            and args.control_condition is None
+        ):
+            control_candidate = predictor._infer_control_condition(resolved_condition)
+            if control_candidate is None:
                 logger.warning(
-                    f"N={n} exceeds available ranked receptors ({len(ranked_receptors)}), skipping"
+                    "No matched control mapping for '%s'; skipping ΔPER run "
+                    "(missing_control_policy=skip).",
+                    resolved_condition,
+                )
+                continue
+            control_resolved = predictor._resolve_dataset_name(control_candidate)
+            if control_resolved is None:
+                logger.warning(
+                    "Matched control '%s' not found for '%s'; skipping ΔPER run "
+                    "(missing_control_policy=skip).",
+                    control_candidate,
+                    resolved_condition,
                 )
                 continue
 
-            if n <= 0:
-                logger.warning(f"N={n} is invalid, skipping")
-                continue
+        # Create output directory
+        output_dir = Path(args.output_dir) / resolved_condition
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-            top_n_receptors = ranked_receptors[:n]
+        # Run baseline
+        try:
+            (
+                baseline_weights,
+                baseline_r2,
+                baseline_mse,
+                baseline_lambda,
+                X,
+                y,
+                receptor_names,
+                scaler,
+            ) = run_baseline(
+                predictor=predictor,
+                condition=resolved_condition,
+                prediction_mode=args.prediction_mode,
+                lambda_range=lambda_range,
+                cv_folds=args.cv_folds,
+                scale_features=args.scale_features,
+                subtract_control=args.subtract_control,
+                control_condition=args.control_condition,
+                missing_control_policy=args.missing_control_policy,
+                debug_stats=args.debug_stats,
+            )
+        except Exception as e:
+            logger.error("Baseline fit failed for %s: %s", resolved_condition, e)
+            exit_code = 1
+            continue
+
+        # Save baseline
+        save_baseline_json(
+            baseline_weights=baseline_weights,
+            baseline_r2=baseline_r2,
+            baseline_mse=baseline_mse,
+            baseline_lambda=baseline_lambda,
+            condition=resolved_condition,
+            prediction_mode=args.prediction_mode,
+            n_samples=X.shape[0],
+            n_receptors_total=X.shape[1],
+            filepath=output_dir / "baseline_model.json",
+        )
+
+        # Determine focus runs
+        focus_results: List[FocusResult] = []
+
+        if args.focus_receptors:
+            # Use explicit receptor list
+            focus_receptors = [r.strip() for r in args.focus_receptors.split(",") if r.strip()]
+            logger.info("Using explicit focus receptors: %s", focus_receptors)
 
             try:
                 result = run_focus(
                     X=X,
                     y=y,
                     receptor_names=receptor_names,
-                    receptors_to_keep=top_n_receptors,
+                    receptors_to_keep=focus_receptors,
                     lambda_range=lambda_range,
                     cv_folds=args.cv_folds,
                     scale_features=args.scale_features,
                     baseline_r2=baseline_r2,
                     baseline_mse=baseline_mse,
+                    debug_stats=args.debug_stats,
                 )
                 focus_results.append(result)
 
                 # Save individual focus result
-                focus_dir = output_dir / f"focus_n{n}"
+                focus_dir = output_dir / f"focus_n{result.n_receptors}"
                 save_focus_json(
                     result=result,
-                    condition=args.condition,
+                    condition=resolved_condition,
                     prediction_mode=args.prediction_mode,
                     n_samples=X.shape[0],
                     filepath=focus_dir / "model.json",
                 )
 
             except Exception as e:
-                logger.error(f"Focus N={n} failed: {e}")
+                logger.error("Focus run failed for %s: %s", resolved_condition, e)
+                exit_code = 1
                 continue
 
-    # Generate focus_curve.csv
-    curve_rows = []
+        else:
+            # Use topn_list
+            topn_list = [int(x.strip()) for x in args.topn_list.split(",")]
+            logger.info("Top-N values to test: %s", topn_list)
 
-    # Add baseline row
-    curve_rows.append({
-        "n_receptors": X.shape[1],
-        "receptors_used": ";".join(sorted(baseline_weights.keys())),
-        "cv_r2": baseline_r2,
-        "cv_mse": baseline_mse,
-        "lambda_value": baseline_lambda,
-        "n_receptors_selected": len(baseline_weights),
-        "delta_r2": 0.0,
-        "delta_mse": 0.0,
-        "is_baseline": True,
-    })
+            # Get ranked receptors from baseline
+            if not baseline_weights:
+                logger.error(
+                    "Baseline model has no non-zero weights for %s; cannot determine top-N",
+                    resolved_condition,
+                )
+                exit_code = 1
+                continue
 
-    # Add focus rows
-    for result in focus_results:
+            if args.baseline_select_by == "abs_weight":
+                ranked_receptors = get_top_receptors_by_weight(
+                    baseline_weights, len(baseline_weights)
+                )
+            else:
+                # stability mode would require multiple runs - fallback to abs_weight
+                logger.warning("stability mode not yet implemented, using abs_weight")
+                ranked_receptors = get_top_receptors_by_weight(
+                    baseline_weights, len(baseline_weights)
+                )
+
+            logger.info("Receptor ranking (top 10): %s", ranked_receptors[:10])
+
+            for n in topn_list:
+                if n > len(ranked_receptors):
+                    logger.warning(
+                        "N=%d exceeds available ranked receptors (%d), skipping",
+                        n,
+                        len(ranked_receptors),
+                    )
+                    continue
+
+                if n <= 0:
+                    logger.warning("N=%d is invalid, skipping", n)
+                    continue
+
+                top_n_receptors = ranked_receptors[:n]
+
+                try:
+                    result = run_focus(
+                        X=X,
+                        y=y,
+                        receptor_names=receptor_names,
+                        receptors_to_keep=top_n_receptors,
+                        lambda_range=lambda_range,
+                        cv_folds=args.cv_folds,
+                        scale_features=args.scale_features,
+                        baseline_r2=baseline_r2,
+                        baseline_mse=baseline_mse,
+                        debug_stats=args.debug_stats,
+                    )
+                    focus_results.append(result)
+
+                    # Save individual focus result
+                    focus_dir = output_dir / f"focus_n{n}"
+                    save_focus_json(
+                        result=result,
+                        condition=resolved_condition,
+                        prediction_mode=args.prediction_mode,
+                        n_samples=X.shape[0],
+                        filepath=focus_dir / "model.json",
+                    )
+
+                except Exception as e:
+                    logger.error("Focus N=%d failed for %s: %s", n, resolved_condition, e)
+                    exit_code = 1
+                    continue
+
+        # Generate focus_curve.csv
+        curve_rows = []
+
+        # Add baseline row
         curve_rows.append({
-            "n_receptors": result.n_receptors,
-            "receptors_used": ";".join(result.receptors_used),
-            "cv_r2": result.cv_r2,
-            "cv_mse": result.cv_mse,
-            "lambda_value": result.lambda_value,
-            "n_receptors_selected": result.n_receptors_selected,
-            "delta_r2": result.delta_r2,
-            "delta_mse": result.delta_mse,
-            "is_baseline": False,
+            "n_receptors": X.shape[1],
+            "receptors_used": ";".join(sorted(baseline_weights.keys())),
+            "cv_r2": baseline_r2,
+            "cv_mse": baseline_mse,
+            "lambda_value": baseline_lambda,
+            "n_receptors_selected": len(baseline_weights),
+            "delta_r2": 0.0,
+            "delta_mse": 0.0,
+            "is_baseline": True,
         })
 
-    curve_df = pd.DataFrame(curve_rows)
-    curve_df = curve_df.sort_values("n_receptors")
-    curve_path = output_dir / "focus_curve.csv"
-    curve_df.to_csv(curve_path, index=False)
-    logger.info(f"Saved focus curve to {curve_path}")
+        # Add focus rows
+        for result in focus_results:
+            curve_rows.append({
+                "n_receptors": result.n_receptors,
+                "receptors_used": ";".join(result.receptors_used),
+                "cv_r2": result.cv_r2,
+                "cv_mse": result.cv_mse,
+                "lambda_value": result.lambda_value,
+                "n_receptors_selected": result.n_receptors_selected,
+                "delta_r2": result.delta_r2,
+                "delta_mse": result.delta_mse,
+                "is_baseline": False,
+            })
 
-    # Generate plots
-    plot_focus_curve(
-        focus_results=focus_results,
-        baseline_r2=baseline_r2,
-        baseline_mse=baseline_mse,
-        output_dir=output_dir,
-        condition=args.condition,
-    )
+        curve_df = pd.DataFrame(curve_rows)
+        curve_df = curve_df.sort_values("n_receptors")
+        curve_path = output_dir / "focus_curve.csv"
+        curve_df.to_csv(curve_path, index=False)
+        logger.info("Saved focus curve to %s", curve_path)
 
-    # Print summary
-    print("\n" + "=" * 80)
-    print(f"LASSO Focus Mode Analysis Complete: {args.condition}")
-    print("=" * 80)
-    print(f"\nBaseline (full): R² = {baseline_r2:.4f}, MSE = {baseline_mse:.4f}")
-    print(f"                 {len(baseline_weights)} receptors selected out of {X.shape[1]}")
-    print(f"\nFocus Mode Results:")
-    for result in sorted(focus_results, key=lambda r: r.n_receptors):
-        print(
-            f"  N={result.n_receptors:3d}:  "
-            f"R² = {result.cv_r2:.4f} (Δ = {result.delta_r2:+.4f})  "
-            f"MSE = {result.cv_mse:.4f} (Δ = {result.delta_mse:+.4f})"
+        # Generate plots
+        plot_focus_curve(
+            focus_results=focus_results,
+            baseline_r2=baseline_r2,
+            baseline_mse=baseline_mse,
+            output_dir=output_dir,
+            condition=resolved_condition,
         )
-    print(f"\nOutputs saved to: {output_dir}")
-    print("=" * 80)
 
-    return 0
+        # Print summary
+        print("\n" + "=" * 80)
+        print(f"LASSO Focus Mode Analysis Complete: {resolved_condition}")
+        print("=" * 80)
+        print(f"\nBaseline (full): R² = {baseline_r2:.4f}, MSE = {baseline_mse:.4f}")
+        print(
+            f"                 {len(baseline_weights)} receptors selected out of {X.shape[1]}"
+        )
+        print(f"\nFocus Mode Results:")
+        for result in sorted(focus_results, key=lambda r: r.n_receptors):
+            print(
+                f"  N={result.n_receptors:3d}:  "
+                f"R² = {result.cv_r2:.4f} (Δ = {result.delta_r2:+.4f})  "
+                f"MSE = {result.cv_mse:.4f} (Δ = {result.delta_mse:+.4f})"
+            )
+        print(f"\nOutputs saved to: {output_dir}")
+        print("=" * 80)
+
+    return exit_code
 
 
 if __name__ == "__main__":

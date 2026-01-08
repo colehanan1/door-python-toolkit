@@ -258,7 +258,10 @@ python scripts/run_lasso_behavioral_prediction.py \
 
 Use `--control_condition` to override the default opto→control mapping, and
 `--also_run_raw` to generate a side-by-side comparison summary CSV.
-If a condition lacks a matched control, the CLI logs a warning and falls back to raw mode.
+If a condition lacks a matched control and `--missing_control_policy` is `skip`,
+the CLI logs a warning and skips the ΔPER run. Otherwise it raises an error.
+Currently unmapped for ΔPER: `opto_ACV`, `opto_3-oct` (provide `--control_condition` to run).
+Default for `--missing_control_policy` is `error` in CLI scripts.
 
 ```bash
 conda activate DoOR

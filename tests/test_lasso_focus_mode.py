@@ -430,6 +430,52 @@ class TestFocusModeScriptOutputs:
         assert result.delta_r2 == result.cv_r2 - 0.9
         assert result.delta_mse == result.cv_mse - 0.01
 
+    def test_run_focus_reproducible_and_no_mutation(self):
+        """Test focus-mode reproducibility and no mutation of X."""
+        from scripts.lasso_with_focus_mode import run_focus
+
+        np.random.seed(123)
+        n_samples, n_features = 12, 8
+        X = np.random.rand(n_samples, n_features)
+        X_before = X.copy()
+
+        true_weights = np.zeros(n_features)
+        true_weights[0] = 1.0
+        true_weights[1] = 0.4
+        y = X @ true_weights + np.random.randn(n_samples) * 0.05
+
+        receptor_names = [f"Or{i}" for i in range(n_features)]
+        lambda_range = np.array([0.001, 0.01])
+
+        result1 = run_focus(
+            X=X,
+            y=y,
+            receptor_names=receptor_names,
+            receptors_to_keep=["Or0", "Or1", "Or2"],
+            lambda_range=lambda_range,
+            cv_folds=3,
+            scale_features=True,
+            baseline_r2=0.0,
+            baseline_mse=0.0,
+        )
+        result2 = run_focus(
+            X=X,
+            y=y,
+            receptor_names=receptor_names,
+            receptors_to_keep=["Or0", "Or1", "Or2"],
+            lambda_range=lambda_range,
+            cv_folds=3,
+            scale_features=True,
+            baseline_r2=0.0,
+            baseline_mse=0.0,
+        )
+
+        assert np.array_equal(X, X_before)
+        assert result1.cv_mse == pytest.approx(result2.cv_mse)
+        assert result1.lambda_value == pytest.approx(result2.lambda_value)
+        assert result1.lasso_weights == result2.lasso_weights
+        assert not np.isnan(result1.cv_mse)
+
 
 # ============================================================================
 # Tests for edge cases

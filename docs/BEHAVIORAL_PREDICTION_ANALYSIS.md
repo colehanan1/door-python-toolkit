@@ -258,7 +258,10 @@ python scripts/run_lasso_behavioral_prediction.py \
 
 Use `--control_condition` to override the default opto→control mapping, and
 `--also_run_raw` to generate a side-by-side comparison summary CSV.
-If a condition lacks a matched control, the CLI logs a warning and falls back to raw mode.
+If a condition lacks a matched control and `--missing_control_policy` is `skip`,
+the CLI logs a warning and skips the ΔPER run. Otherwise it raises an error.
+Currently unmapped for ΔPER: `opto_ACV`, `opto_3-oct` (provide `--control_condition` to run).
+Default for `--missing_control_policy` is `error` in CLI scripts.
 
 ```bash
 conda activate DoOR
@@ -523,6 +526,14 @@ behavioral_prediction_results/
 
 **FlyWire Connectome:**
 - FlyWire Consortium (2024) "FlyWire: online community for whole-brain connectomics" *Nature*
+
+---
+
+## Stability Layer (LOOO)
+Run: `conda run -n DoOR python diagnostics/run_stability_and_metrics.py --door_cache door_cache --behavior_csv /path/to/reaction_rates_summary_unordered.csv --conditions opto_hex,opto_EB,opto_benz_1,opto_ACV,opto_3-oct --prediction_mode test_odorant --seed 1337 --subtract_control --missing_control_policy skip`  
+Outputs: `diagnostics/stability_<timestamp>/SUMMARY.md` and `EXPERIMENT_SHORTLIST.md`.  
+Use normalized metrics (`nmse`, `rmse_over_y_std`) for cross-condition comparisons.  
+ΔPER runs are skipped for conditions without mapped controls when `missing_control_policy=skip`.
 
 ---
 

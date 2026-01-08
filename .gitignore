@@ -169,4 +169,7 @@ helper-code/
 
 flywire_orn_database/
 
-diagnostics/
+diagnostics/*
+!diagnostics/
+!diagnostics/*.py
+!diagnostics/*.md

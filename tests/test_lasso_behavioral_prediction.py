@@ -12,6 +12,7 @@ from door_toolkit.pathways.behavioral_prediction import (
     LassoBehavioralPredictor,
     apply_receptor_ablation,
     fit_lasso_with_fixed_scaler,
+    restrict_to_receptors,
 )
 from sklearn.preprocessing import StandardScaler
 
@@ -43,6 +44,18 @@ hex_control,0.1,,0.05,0.3
 
 
 @pytest.fixture
+def control_behavioral_csv_extended(tmp_path):
+    """Create mock behavioral CSV with >=6 odorants and control NaNs."""
+    csv_content = """dataset,Hexanol,Benzaldehyde,Linalool,Citral,Apple_Cider_Vinegar,Ethyl_Butyrate
+opto_hex,0.8,0.2,0.4,0.6,0.3,0.5
+hex_control,0.1,,0.05,0.3,0.1,0.4
+"""
+    csv_path = tmp_path / "test_behavior_control_extended.csv"
+    csv_path.write_text(csv_content)
+    return csv_path
+
+
+@pytest.fixture
 def lasso_predictor(mock_door_cache, mock_behavioral_csv):
     """Create LassoBehavioralPredictor instance for testing."""
     return LassoBehavioralPredictor(
@@ -59,6 +72,17 @@ def control_lasso_predictor(mock_door_cache, control_behavioral_csv):
     return LassoBehavioralPredictor(
         doorcache_path=str(mock_door_cache),
         behavior_csv_path=str(control_behavioral_csv),
+        scale_features=True,
+        scale_targets=False,
+    )
+
+
+@pytest.fixture
+def control_lasso_predictor_extended(mock_door_cache, control_behavioral_csv_extended):
+    """Create LassoBehavioralPredictor for extended control subtraction tests."""
+    return LassoBehavioralPredictor(
+        doorcache_path=str(mock_door_cache),
+        behavior_csv_path=str(control_behavioral_csv_extended),
         scale_features=True,
         scale_targets=False,
     )
@@ -508,6 +532,50 @@ class TestLassoBehavioralPredictorControlSubtraction:
                 subtract_control=True,
             )
 
+    def test_subtract_control_raw_matches_behavioral_row(
+        self, control_lasso_predictor_extended
+    ):
+        results = control_lasso_predictor_extended.fit_behavior(
+            condition_name="opto_hex",
+            lambda_range=[0.1],
+            cv_folds=2,
+            subtract_control=False,
+        )
+
+        expected = control_lasso_predictor_extended.behavioral_data.loc["opto_hex"]
+        actual_map = dict(zip(results.test_odorants, results.actual_per))
+        for odor, value in actual_map.items():
+            assert value == pytest.approx(float(expected[odor]))
+
+    def test_subtract_control_extended_policies(self, control_lasso_predictor_extended):
+        results_skip = control_lasso_predictor_extended.fit_behavior(
+            condition_name="opto_hex",
+            lambda_range=[0.1],
+            cv_folds=2,
+            subtract_control=True,
+            missing_control_policy="skip",
+        )
+        assert "Benzaldehyde" not in results_skip.test_odorants
+
+        results_zero = control_lasso_predictor_extended.fit_behavior(
+            condition_name="opto_hex",
+            lambda_range=[0.1],
+            cv_folds=2,
+            subtract_control=True,
+            missing_control_policy="zero",
+        )
+        actual_map_zero = dict(zip(results_zero.test_odorants, results_zero.actual_per))
+        assert actual_map_zero["Benzaldehyde"] == pytest.approx(0.2)
+
+        with pytest.raises(ValueError, match="missing values"):
+            control_lasso_predictor_extended.fit_behavior(
+                condition_name="opto_hex",
+                lambda_range=[0.1],
+                cv_folds=2,
+                subtract_control=True,
+                missing_control_policy="error",
+            )
+
 
 class TestLassoBehavioralPredictorRegressionChecks:
     """Regression checks for mutation and ΔPER prediction collapse."""
@@ -571,9 +639,9 @@ class TestLassoBehavioralPredictorRegressionChecks:
         assert np.array_equal(X_before, baseline_repeat.feature_matrix)
 
     def test_delta_prediction_not_constant(self, mock_door_cache, tmp_path):
-        csv_content = """dataset,Hexanol,Benzaldehyde,Linalool,Citral
-opto_hex,0.8,0.2,0.4,0.6
-hex_control,0.1,0.0,0.05,0.3
+        csv_content = """dataset,Hexanol,Benzaldehyde,Linalool,Citral,Apple_Cider_Vinegar,Ethyl_Butyrate
+opto_hex,0.8,0.2,0.4,0.6,0.3,0.5
+hex_control,0.1,0.0,0.05,0.3,0.1,0.4
 """
         csv_path = tmp_path / "delta_variation.csv"
         csv_path.write_text(csv_content)
@@ -587,7 +655,7 @@ hex_control,0.1,0.0,0.05,0.3
 
         results = predictor.fit_behavior(
             condition_name="opto_hex",
-            lambda_range=[1e-4, 1e-3],
+            lambda_range=[1e-6, 1e-5, 1e-4],
             cv_folds=2,
             subtract_control=True,
             missing_control_policy="skip",
@@ -595,3 +663,39 @@ hex_control,0.1,0.0,0.05,0.3
 
         assert np.std(results.actual_per) > 1e-6
         assert np.std(results.predicted_per) > 1e-6
+
+
+class TestLassoFeatureShapeIntegrity:
+    """Tests for ablation/focus feature shape changes."""
+
+    def test_ablation_and_restriction_shapes(self, control_lasso_predictor_extended):
+        results = control_lasso_predictor_extended.fit_behavior(
+            condition_name="opto_hex",
+            lambda_range=[0.1],
+            cv_folds=2,
+            subtract_control=False,
+        )
+
+        if results.feature_matrix is None:
+            pytest.skip("Feature matrix not available for shape checks.")
+
+        X = results.feature_matrix
+        receptor_names = results.receptor_names
+        if len(receptor_names) < 2:
+            pytest.skip("Not enough receptors for shape integrity test.")
+
+        X_ablated, indices = apply_receptor_ablation(
+            X=X,
+            receptor_names=receptor_names,
+            receptors_to_ablate=[receptor_names[0]],
+        )
+        assert X_ablated.shape == X.shape
+        assert np.allclose(X_ablated[:, indices[0]], 0.0)
+
+        X_restricted, kept_names, kept_indices = restrict_to_receptors(
+            X=X,
+            receptor_names=receptor_names,
+            receptors_to_keep=receptor_names[:2],
+        )
+        assert X_restricted.shape[1] == 2
+        assert kept_names == receptor_names[:2]

@@ -127,7 +127,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--missing_control_policy",
         choices=["skip", "zero", "error"],
-        default="skip",
+        default="error",
         help="How to handle missing control values.",
     )
 
@@ -143,6 +143,11 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Comma-separated lambda values (e.g., 0.0001,0.001,0.01).",
     )
+    parser.add_argument(
+        "--lambda_range_delta",
+        default="1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1.0",
+        help="Comma-separated lambda values for ΔPER runs.",
+    )
 
     return parser.parse_args()
 
@@ -156,6 +161,7 @@ def main() -> None:
         raise ValueError("No valid conditions provided.")
 
     lambda_range = _parse_lambda_range(args.lambda_range)
+    lambda_range_delta = _parse_lambda_range(args.lambda_range_delta)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -176,6 +182,7 @@ def main() -> None:
         ran_raw = False
         for mode_label, subtract_control in modes_to_run:
             try:
+                mode_lambda_range = lambda_range_delta if subtract_control else lambda_range
                 results = _run_condition(
                     predictor,
                     condition_name=condition_name,
@@ -184,34 +191,20 @@ def main() -> None:
                     control_condition=args.control_condition,
                     missing_control_policy=args.missing_control_policy,
                     prediction_mode=args.prediction_mode,
-                    lambda_range=lambda_range,
+                    lambda_range=mode_lambda_range,
                     cv_folds=args.cv_folds,
                     output_dir=output_dir,
                 )
             except ValueError as exc:
                 if subtract_control and _is_missing_control_error(exc):
-                    logger.warning(
-                        "No control found for '%s'; falling back to raw mode.",
-                        condition_name,
-                    )
-                    if ran_raw:
-                        logger.info("Raw mode already completed for '%s'; skipping delta.", condition_name)
+                    if args.missing_control_policy == "skip":
+                        logger.warning(
+                            "No control found for '%s'; skipping ΔPER run (missing_control_policy=skip).",
+                            condition_name,
+                        )
                         continue
-                    results = _run_condition(
-                        predictor,
-                        condition_name=condition_name,
-                        mode_label="raw",
-                        subtract_control=False,
-                        control_condition=None,
-                        missing_control_policy=args.missing_control_policy,
-                        prediction_mode=args.prediction_mode,
-                        lambda_range=lambda_range,
-                        cv_folds=args.cv_folds,
-                        output_dir=output_dir,
-                    )
-                    mode_label = "raw"
-                else:
                     raise
+                raise
 
             if mode_label == "raw":
                 ran_raw = True

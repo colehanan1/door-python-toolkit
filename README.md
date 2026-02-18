@@ -682,6 +682,95 @@ door-pathways --cache door_cache --predict-behavior "ethyl butyrate"
 
 ---
 
+## Baseline Glomerulus Weight Vector from Control PER
+
+Fit a single regularized (LASSO/Ridge/ElasticNet) regression from **glomerulus-level** odor feature vectors to baseline/control PER (Proboscis Extension Response) labels. The pipeline maps DoOR receptor responses to glomeruli using the authoritative `door_to_flywire_mapping.csv`, then produces a ranked weight vector with each glomerulus classified as **positive (+)**, **negative (−)**, or **zero (0)**.
+
+### Concept
+
+1. **Receptor → Glomerulus mapping**: Each of the 78 DoOR receptors is mapped to its target glomerulus. When multiple receptors converge on the same glomerulus, their responses are aggregated (default: `max`).
+2. **Feature-set filtering**: Glomeruli can be filtered to those "active" (response > threshold) for the odors of interest — using `union` (active in any odor), `intersection` (active in all), or `all` (no filtering).
+3. **Regression**: A regularized regression fits the design matrix **(n_odors × n_glomeruli)** to the PER labels. LASSO is the default for sparsity + sign interpretability.
+4. **Weight classification**: Weights are classified as `+1` (w > ε), `-1` (w < −ε), or `0` (|w| ≤ ε), where ε is configurable (default: 1e-6).
+
+### Limitations
+
+- **Only 4 datapoints** — the model is severely underdetermined. Results are exploratory and hypothesis-generating, not predictive.
+- Glomerulus-level aggregation loses receptor-level resolution (e.g., co-expressed receptors in the same sensillum).
+- The mapping has a few ambiguous entries (see `is_ambiguous` column in the mapping CSV).
+
+### CLI Usage
+
+```bash
+# Union of active glomeruli (default)
+python scripts/fit_glomerulus_weights.py \
+    --config configs/glomerulus_weight_baseline.yaml \
+    --feature-set union \
+    --outdir out/glomerulus_baseline_union
+
+# Intersection of active glomeruli
+python scripts/fit_glomerulus_weights.py \
+    --config configs/glomerulus_weight_baseline.yaml \
+    --feature-set intersection \
+    --outdir out/glomerulus_baseline_intersection
+
+# All glomeruli, Ridge regression, custom threshold
+python scripts/fit_glomerulus_weights.py \
+    --config configs/glomerulus_weight_baseline.yaml \
+    --feature-set all --model ridge \
+    --activation-threshold 0.1 \
+    --outdir out/glomerulus_ridge_all
+```
+
+Or via the installed console script:
+
+```bash
+door-fit-glomerulus-weights --config configs/glomerulus_weight_baseline.yaml --outdir out/baseline
+```
+
+### Configuration
+
+See `configs/glomerulus_weight_baseline.yaml` for the default config with 4 odors and their control PER labels. CLI flags override config defaults.
+
+### Output Files
+
+| File | Description |
+|------|-------------|
+| `weights.csv` | Glomerulus, weight, sign (+1/−1/0), abs_weight, rank |
+| `model_summary.json` | Model type, alpha, R², MSE, sign counts, full config |
+
+### Python API
+
+```python
+from door_toolkit.encoder import DoOREncoder
+from door_toolkit.glomerulus_features import (
+    load_receptor_to_glomerulus_mapping,
+    build_design_matrix,
+)
+from door_toolkit.glomerulus_regression import (
+    fit_glomerulus_weight_vector,
+    export_weight_report,
+)
+
+encoder = DoOREncoder("door_cache", use_torch=False)
+mapping, _ = load_receptor_to_glomerulus_mapping("data/mappings/door_to_flywire_mapping.csv")
+
+odors = ["ethyl butyrate", "1-hexanol", "benzaldehyde", "3-octanol"]
+y = [0.48, 0.07, 0.04, 0.14]
+
+X, glom_names, meta = build_design_matrix(
+    odors, encoder, mapping, feature_set="union", activation_threshold=0.05,
+)
+results = fit_glomerulus_weight_vector(X, y, glom_names, model="lasso")
+export_weight_report(results, "out/my_analysis")
+```
+
+### How to Extend Later
+
+This pipeline produces a **single weight vector** from baseline PER. A natural extension is a **two-pathway opponent model** that fits separate excitatory/inhibitory weight vectors (e.g., approach vs. avoidance pathways) using opto vs. control PER differences. That is out of scope for this module but the glomerulus feature construction (`build_design_matrix`) is designed to be reusable.
+
+---
+
 ## Neural Network Preprocessing
 
 Prepare DoOR data for neural network training with sparse encoding and augmentation.

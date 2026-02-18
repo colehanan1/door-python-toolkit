@@ -1,0 +1,33 @@
+# Baseline glomerulus weight vector configuration
+# ================================================
+# Fits a single regularized regression from glomerulus-level odor features
+# to control/baseline PER (Proboscis Extension Response) labels.
+#
+# NOTE: With only 4 datapoints this is severely underdetermined.
+# Results are exploratory / hypothesis-generating only.
+
+odors:
+  - name: ethyl butyrate
+    per_label: 0.48
+  - name: 1-hexanol
+    per_label: 0.07
+  - name: benzaldehyde
+    per_label: 0.04
+  - name: 3-octanol
+    per_label: 0.14
+
+defaults:
+  feature_set: intersection   # all | union | intersection
+  activation_threshold: 0.05  # glomerulus considered "active" if aggregated response > this
+  aggregation: max             # max | mean | sum (when multiple receptors → same glomerulus)
+  model: ridge                 # lasso | ridge | elasticnet (ridge recommended for small n_samples)
+  standardize: true
+  random_state: 0
+  zero_eps: 1.0e-6             # |weight| < eps → classified as zero
+  target_mode: centered        # centered: fit y - mean(y); raw: fit raw PER labels
+  door_cache_path: door_cache
+  mapping_csv_path: data/mappings/door_to_flywire_mapping.csv
+  # NOTE: With only 4 samples, use intersection feature set to reduce dimensions.
+  # Ridge is preferred over LASSO for small samples (less overfitting).
+  # Centered mode is recommended: intercept ≈ 0, weights represent deviations from mean PER.
+  # Use --target-mode raw to get legacy behavior (intercept ≈ mean PER).

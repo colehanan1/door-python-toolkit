@@ -253,7 +253,12 @@ def _parse_args(argv=None):
     p.add_argument("--door-cache", default="door_cache")
     p.add_argument("--mapping-csv", default="data/mappings/door_to_flywire_mapping.csv")
     p.add_argument("--feature-set", choices=["all", "union", "intersection"], default="intersection")
-    p.add_argument("--activation-threshold", type=float, default=0.05)
+    p.add_argument(
+        "--activation-threshold",
+        type=float,
+        default=0.0,
+        help="Activation threshold for feature selection (default: 0.0).",
+    )
     p.add_argument("--agg", choices=["max", "mean", "sum"], default="max")
 
     # Sparse-fit settings.

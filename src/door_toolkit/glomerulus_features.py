@@ -178,7 +178,7 @@ def build_design_matrix(
     encoder: DoOREncoder,
     mapping: Dict[str, List[str]],
     *,
-    feature_set: Literal["all", "union", "intersection"] = "union",
+    feature_set: Literal["all", "union", "intersection", "no_blanks"] = "union",
     activation_threshold: float = 0.05,
     agg: Literal["max", "mean", "sum"] = "max",
 ) -> Tuple[np.ndarray, List[str], dict]:
@@ -192,6 +192,7 @@ def build_design_matrix(
             - "all": every receptor in the mapping.
             - "union": receptors active for at least one odor.
             - "intersection": receptors active for all odors.
+            - "no_blanks": receptors with at least one non-zero value (excludes all-zero receptors).
         activation_threshold: Response above this marks a receptor as active.
         agg: Aggregation (ignored, kept for API compatibility).
 
@@ -230,8 +231,11 @@ def build_design_matrix(
         selected_mask = active_masks.any(axis=0)
     elif feature_set == "intersection":
         selected_mask = active_masks.all(axis=0)
+    elif feature_set == "no_blanks":
+        # Include receptors with at least one non-zero value (any absolute value > 0)
+        selected_mask = np.any(np.abs(full_matrix) > 0.0, axis=0)
     else:
-        raise ValueError(f"feature_set must be all/union/intersection, got '{feature_set}'")
+        raise ValueError(f"feature_set must be all/union/intersection/no_blanks, got '{feature_set}'")
 
     selected_indices = np.where(selected_mask)[0]
     selected_receptor_names = [all_receptors[i] for i in selected_indices]

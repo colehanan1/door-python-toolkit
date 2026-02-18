@@ -1,0 +1,5 @@
+{
+  "model": "lasso",
+  "n_features": 3,
+  "standardize": true
+}

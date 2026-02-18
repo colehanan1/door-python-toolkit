@@ -1,0 +1,4 @@
+feature,delta_weight
+f_benz_like,0.05
+f_eb_like,0.02
+f_shared,-0.01

@@ -769,6 +769,34 @@ export_weight_report(results, "out/my_analysis")
 
 This pipeline produces a **single weight vector** from baseline PER. A natural extension is a **two-pathway opponent model** that fits separate excitatory/inhibitory weight vectors (e.g., approach vs. avoidance pathways) using opto vs. control PER differences. That is out of scope for this module but the glomerulus feature construction (`build_design_matrix`) is designed to be reusable.
 
+### Plasticity Delta Weights from opto CSV (4 odors)
+
+```bash
+python scripts/fit_plasticity_delta_weights.py \
+  --csv /home/ramanlab/Documents/cole/Results/Opto/Reaction_Predictions/reaction_rates_summary_unordered.csv \
+  --control-row opto_AIR \
+  --odors benzaldehyde,ethyl_butyrate,1-hexanol,3-octanol \
+  --center-delta \
+  --model lasso \
+  --outdir out/plasticity_delta_4odors
+```
+
+This run computes `ΔPER = trained - opto_AIR` per condition, mean-centers each 4-odor delta vector by default, and fits one sparse Δweight vector per training condition using the existing DoOR feature builder. Output includes per-condition raw/centered delta tables, signed Δweights, and contribution rankings `x(test_odor) * Δw` (including benz-training → hex-test when present in the CSV).
+
+To fit only specific training conditions and generate baseline comparisons:
+
+```bash
+python scripts/fit_plasticity_delta_weights.py \
+  --csv /home/ramanlab/Documents/cole/Results/Opto/Reaction_Predictions/reaction_rates_summary_unordered.csv \
+  --control-row opto_AIR \
+  --conditions opto_EB \
+  --min-nonzero 3 \
+  --baseline-outdir out/baseline_raw \
+  --outdir out/plasticity_opto_EB
+```
+
+This produces `weight_comparison_opto_EB.csv` and `reconstruction_opto_EB.csv` in the output directory alongside the delta artifacts.
+
 ---
 
 ## Neural Network Preprocessing

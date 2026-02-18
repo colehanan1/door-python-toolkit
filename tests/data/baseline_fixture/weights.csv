@@ -1,0 +1,4 @@
+receptor,weight,sign,abs_weight,rank
+f_benz_like,0.2,1,0.2,1
+f_eb_like,-0.1,-1,0.1,2
+f_shared,0.05,1,0.05,3

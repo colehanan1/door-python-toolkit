@@ -799,6 +799,59 @@ This produces `weight_comparison_opto_EB.csv` and `reconstruction_opto_EB.csv` i
 
 ---
 
+## Odor Similarity with Missing-Data Handling
+
+Compare odor response profiles despite missing receptor measurements. DoOR vectors are ~86% sparse, so naive similarity is unreliable. Two modes handle this:
+
+- **Pairwise mask-aware** (default): each pair uses only features measured in *both* odors — maximises data used per comparison.
+- **Global intersection**: all pairs share the same feature set (AND of all measured masks) — ensures a consistent comparison basis, but more conservative.
+
+Every similarity value reports `overlap_n` (shared measured features) and per-odor coverage. A `min_overlap` guard (default 10) prevents silent garbage results — pairs with insufficient overlap produce NaN with an explicit warning.
+
+### Python API
+
+```python
+from door_toolkit.encoder import DoOREncoder
+from door_toolkit.similarity import similarity_matrix, find_similar
+
+encoder = DoOREncoder("door_cache")
+odors = ["benzaldehyde", "ethyl butyrate", "1-hexanol", "3-octanol"]
+
+# Full pairwise matrix (default: mask-aware, cosine)
+S, meta = similarity_matrix(odors, encoder, method="cosine", mask_mode="pairwise")
+print(S)                        # 4×4 similarity matrix
+print(meta["overlap_matrix"])   # 4×4 overlap counts
+print(meta["coverage"])         # per-odor feature counts
+
+# Find most similar to a query odor
+df = find_similar(odors, "benzaldehyde", encoder, top_k=3, method="pearson")
+print(df[["target_odor", "similarity", "overlap_n"]])
+```
+
+### CLI Usage
+
+```bash
+# Pairwise cosine similarity matrix
+python scripts/run_similarity.py \
+    --odors "benzaldehyde,ethyl butyrate,1-hexanol,3-octanol" \
+    --method cosine --mask-mode pairwise --min-overlap 10 \
+    --cache-path door_cache --outdir out/sim_pairwise
+
+# Global intersection mode
+python scripts/run_similarity.py \
+    --odors "benzaldehyde,ethyl butyrate,1-hexanol,3-octanol" \
+    --method cosine --mask-mode global --min-overlap 10 \
+    --cache-path door_cache --outdir out/sim_global
+
+# Query mode: find similar to one odor
+python scripts/run_similarity.py \
+    --odors "benzaldehyde,ethyl butyrate,1-hexanol,3-octanol" \
+    --query benzaldehyde --method pearson --mask-mode pairwise \
+    --min-overlap 10 --cache-path door_cache --outdir out/sim_query
+```
+
+---
+
 ## Neural Network Preprocessing
 
 Prepare DoOR data for neural network training with sparse encoding and augmentation.

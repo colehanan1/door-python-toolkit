@@ -72,7 +72,30 @@ def plot_weights_and_deltaperby_odor(
         baseline_weights = baseline_weights.copy()
         if "feature" in baseline_weights.columns:
             baseline_weights = baseline_weights.set_index("feature")
-        baseline_weights = baseline_weights.loc[feature_names]  # Reindex to match
+        elif "receptor" in baseline_weights.columns:
+            baseline_weights = baseline_weights.set_index("receptor")
+
+        if "baseline_w" not in baseline_weights.columns and "weight" in baseline_weights.columns:
+            baseline_weights = baseline_weights.rename(columns={"weight": "baseline_w"})
+        if "baseline_w" not in baseline_weights.columns:
+            raise ValueError("baseline_weights must include 'baseline_w' (or 'weight') column.")
+
+        # Reindex to match; fill missing with 0 and warn if mismatch.
+        missing = [f for f in feature_names if f not in baseline_weights.index]
+        extra = [f for f in baseline_weights.index if f not in feature_names]
+        if missing:
+            logger.warning(
+                "Baseline weights missing %d features; filling with 0. Example: %s",
+                len(missing),
+                missing[:5],
+            )
+        if extra:
+            logger.warning(
+                "Baseline weights have %d extra features not in current feature set. Example: %s",
+                len(extra),
+                extra[:5],
+            )
+        baseline_weights = baseline_weights.reindex(feature_names).fillna(0.0)
     else:
         baseline_weights = None
 

@@ -1,0 +1,18 @@
+{
+  "tx": 247.11,
+  "ty": 471.53,
+  "tz": 0.0,
+  "rx": 0.0,
+  "ry": 0.0,
+  "rz": 29.5,
+  "sx": 0.35,
+  "sy": 0.37,
+  "sz": 1.0,
+  "flip_x": false,
+  "flip_y": false,
+  "flip_z": false,
+  "threshold": 0.3,
+  "atlas_hash": "081d7291d710f4cbb4dc3ff998454f8fb00dfb7f8e1a324b2e5aa1f3903d8b75",
+  "reference_hash": null,
+  "timestamp_utc": "2026-04-22T22:46:20Z"
+}

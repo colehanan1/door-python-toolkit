@@ -54,10 +54,12 @@ pip install door-python-toolkit
 pip install door-python-toolkit[all]
 
 # Individual feature sets
-pip install door-python-toolkit[flywire]      # FlyWire integration
-pip install door-python-toolkit[connectomics] # Connectomics module
-pip install door-python-toolkit[torch]        # PyTorch support
-pip install door-python-toolkit[extract]      # DoOR extraction
+pip install door-python-toolkit[flywire]              # FlyWire integration
+pip install door-python-toolkit[connectomics]         # Connectomics module
+pip install door-python-toolkit[torch]                # PyTorch support
+pip install door-python-toolkit[extract]              # DoOR extraction
+pip install door-python-toolkit[atlas-align]          # PyQt6 atlas-alignment GUI
+pip install door-python-toolkit[atlas-align-builder]  # FlyWire→JRC2018F atlas builder
 ```
 
 ### Basic Usage
@@ -1485,6 +1487,100 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Original DoOR:** https://github.com/ropensci/DoOR.data
 - **FlyWire:** https://flywire.ai/
 - **Raman Lab:** https://ramanlab.wustl.edu/
+
+---
+
+## Interactive Antennal Lobe Glomerulus Identification (`atlas_align`)
+
+`atlas_align` is a PyQt6 GUI for assigning anatomical glomerulus
+identities to hand-drawn calcium-imaging ROIs. You pose a 3D FlyWire-
+derived labelmap (registered to JRC2018F) in 10 DOF until its 2D
+projection lines up with your imaging plane, then export FIJI-ready
+ROIs with glomerulus labels plus an `assignments.csv` and reproducible
+`pose.json`.
+
+### One-time install into the DoOR conda environment
+
+```bash
+conda activate DoOR
+pip install -e '.[atlas-align,atlas-align-builder]'
+```
+
+### One-time FlyWire atlas build
+
+The FlyWire CAVE token is read from
+`~/.cloudvolume/secrets/cave-secret.json`. If you don't have one:
+
+```bash
+python -c "from fafbseg import flywire; flywire.set_chunkedgraph_secret('YOUR_TOKEN')"
+```
+
+Then build the atlas. There are **three** data-source modes:
+
+**(a) Local Schlegel 2024 dump (recommended when you already have the
+flat files)** — no CAVE, no 403, fastest:
+
+```bash
+python -m door_toolkit.atlas_align.atlas_builder \
+    --local-flywire data/flywire \
+    --output-dir ~/atlas_align_data --save-meshes -v
+```
+
+The builder looks for `classification.csv`, `consolidated_cell_types.csv`,
+and `sk_lod1_783_healed.zip` inside the given directory.
+
+**(b) CAVE query (requires FAFB production access on your token):**
+
+```bash
+python -m door_toolkit.atlas_align.atlas_builder \
+    --output-dir ~/atlas_align_data --save-meshes -v
+```
+
+If you see `HTTPError: 403 Client Error: FORBIDDEN … Missing permission:
+view for dataset fafb`, your token lacks production-tier access — use
+(a) instead, or request access on the FlyWire Slack.
+
+**(c) Mock atlas (smoke test, ~1 s):**
+
+For quick smoke checks without network:
+
+```bash
+python -m door_toolkit.atlas_align.atlas_builder \
+    --mock-flywire --output-dir /tmp/atlas_test
+```
+
+The builder writes `flywire_al_labelmap.tif` (uint16, JRC2018F grid),
+`flywire_al_labels.json`, `build_manifest.json`, and per-axis QC MIPs.
+
+### Daily use
+
+```bash
+conda activate DoOR
+door-atlas-align \
+    --atlas ~/atlas_align_data \
+    --reference path/to/reference.tif \
+    --rois path/to/rois.zip
+```
+
+or equivalently `python -m door_toolkit.atlas_align`.
+
+The GUI shows the reference image with ROIs on the left and the current
+atlas MIP (plus colour-coded labels) on the right with linked pan/zoom.
+Adjust the 10 DOFs via sliders or keyboard shortcuts (arrows for
+translation, `Q/E/R/T/Y/U` for rotation, `+/-` for isotropic scale,
+`Space` to toggle the label overlay, `Ctrl+S` to save pose, `Ctrl+E`
+to export). The **Assign & Export** button writes `rois_assigned.zip`,
+`assignments.csv`, and `pose.json` to a chosen directory.
+
+### Troubleshooting
+
+- **No FlyWire token found** — run the `set_chunkedgraph_secret` snippet above.
+- **Projection feels slow** — the full JRC2018F volume is 1210×566×174; the
+  worker thread keeps sliders responsive, but the first projection after a
+  big pose change can take a few hundred ms on CPU.
+- **GUI missing grayscale channel** — the builder only writes the labelmap;
+  `atlas_align` falls back to a binary MIP of the labelmap as the grayscale
+  reference when `flywire_al_grayscale.tif` is absent (intentional).
 
 ---
 

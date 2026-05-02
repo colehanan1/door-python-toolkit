@@ -69,6 +69,22 @@ connectomics = [
 ]
 spatial = ["trimesh>=3.15.0"]
 h5 = ["h5py>=3.7.0"]
+atlas-align = [
+    "PyQt6>=6.6",
+    "pyqtgraph>=0.13",
+    "scikit-image>=0.21",
+    "tifffile>=2024.1",
+    "roifile>=2024.5",
+    "rich>=13.0",
+    "Pillow>=9.0",
+]
+atlas-align-builder = [
+    "navis>=1.8",
+    "fafbseg>=3.0",
+    "flybrains>=0.2.13",
+    "trimesh>=4.0",
+    "matplotlib>=3.5",
+]
 all = [
     "pyreadr>=0.4.7",
     "torch>=2.0.0",
@@ -77,6 +93,17 @@ all = [
     "python-louvain>=0.16",
     "trimesh>=3.15.0",
     "h5py>=3.7.0",
+    "PyQt6>=6.6",
+    "pyqtgraph>=0.13",
+    "scikit-image>=0.21",
+    "tifffile>=2024.1",
+    "roifile>=2024.5",
+    "rich>=13.0",
+    "Pillow>=9.0",
+    "navis>=1.8",
+    "fafbseg>=3.0",
+    "flybrains>=0.2.13",
+    "matplotlib>=3.5",
 ]
 dev = [
     'tomli>=2.0.1; python_version<"3.11"',
@@ -104,6 +131,9 @@ door-flywire = "door_toolkit.cli_flywire:flywire_main"
 door-pathways = "door_toolkit.cli_pathways:pathways_main"
 door-neural = "door_toolkit.cli_neural:neural_main"
 door-fit-glomerulus-weights = "door_toolkit.cli_glomerulus:glomerulus_main"
+door-atlas-align = "door_toolkit.atlas_align.gui.main_window:main"
+door-atlas-builder = "door_toolkit.atlas_align.atlas_builder.build_atlas:main"
+door-atlas-builder-2d = "door_toolkit.atlas_align.atlas_builder.build_door_atlas:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/door_toolkit"]
@@ -153,6 +183,7 @@ addopts = [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "atlas_align: marks tests belonging to the atlas_align subpackage",
 ]
 
 # Coverage configuration

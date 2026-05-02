@@ -159,6 +159,10 @@ def _parse_args(argv=None):
         "--alpha-grid", default="default",
         help="Comma-separated alpha grid or 'default'.",
     )
+    p.add_argument(
+        "--alpha", type=float, default=None,
+        help="Fixed alpha (overrides --alpha-grid).",
+    )
     p.add_argument("--l1-ratio", type=float, default=0.5)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument(
@@ -202,6 +206,8 @@ def main(argv=None) -> int:
 
     conditions = _parse_conditions(args.conditions)
     alpha_grid = _parse_alpha_grid(args.alpha_grid)
+    if args.alpha is not None:
+        alpha_grid = [float(args.alpha)]
 
     feature_builder = _build_feature_builder(
         door_cache=args.door_cache,
